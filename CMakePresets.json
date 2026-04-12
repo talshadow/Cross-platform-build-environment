@@ -1,0 +1,260 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 23, "patch": 0 },
+
+  "configurePresets": [
+
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+
+    {
+      "name": "base-cross",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "BUILD_TESTS": "OFF"
+      }
+    },
+
+    {
+      "name": "ubuntu2004-debug",
+      "displayName": "Ubuntu 20.04 — Debug",
+      "description": "Нативна збірка GCC 10, Ubuntu 20.04, режим Debug",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2004.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "UBUNTU2004_GCC_VERSION": "10"
+      }
+    },
+
+    {
+      "name": "ubuntu2004-release",
+      "displayName": "Ubuntu 20.04 — Release",
+      "description": "Нативна збірка GCC 10, Ubuntu 20.04, режим Release",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2004.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "UBUNTU2004_GCC_VERSION": "10",
+        "ENABLE_LTO": "ON"
+      }
+    },
+
+    {
+      "name": "ubuntu2404-debug",
+      "displayName": "Ubuntu 24.04 — Debug",
+      "description": "Нативна збірка GCC 13, Ubuntu 24.04, режим Debug",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2404.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "UBUNTU2404_GCC_VERSION": "13"
+      }
+    },
+
+    {
+      "name": "ubuntu2404-release",
+      "displayName": "Ubuntu 24.04 — Release",
+      "description": "Нативна збірка GCC 13, Ubuntu 24.04, режим Release",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2404.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "UBUNTU2404_GCC_VERSION": "13",
+        "ENABLE_LTO": "ON"
+      }
+    },
+
+    {
+      "name": "ubuntu2404-asan",
+      "displayName": "Ubuntu 24.04 — Debug + ASAN + UBSAN",
+      "description": "Debug збірка з санітайзерами для розробки",
+      "inherits": "ubuntu2404-debug",
+      "cacheVariables": {
+        "ENABLE_ASAN": "ON",
+        "ENABLE_UBSAN": "ON"
+      }
+    },
+
+    {
+      "name": "rpi1-debug",
+      "displayName": "Raspberry Pi 1 / Zero — Debug",
+      "description": "Крос-компіляція для BCM2835 (ARMv6), режим Debug",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi1.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "rpi1-release",
+      "displayName": "Raspberry Pi 1 / Zero — Release",
+      "description": "Крос-компіляція для BCM2835 (ARMv6), режим Release",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi1.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "rpi2-debug",
+      "displayName": "Raspberry Pi 2 — Debug",
+      "description": "Крос-компіляція для BCM2836 (Cortex-A7), режим Debug",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi2.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "rpi2-release",
+      "displayName": "Raspberry Pi 2 — Release",
+      "description": "Крос-компіляція для BCM2836 (Cortex-A7), режим Release",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi2.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "rpi3-debug",
+      "displayName": "Raspberry Pi 3 / Zero 2W — Debug",
+      "description": "Крос-компіляція для BCM2837 (Cortex-A53, AArch64), режим Debug",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi3.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "rpi3-release",
+      "displayName": "Raspberry Pi 3 / Zero 2W — Release",
+      "description": "Крос-компіляція для BCM2837 (Cortex-A53, AArch64), режим Release",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi3.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "rpi4-debug",
+      "displayName": "Raspberry Pi 4 / 400 / CM4 — Debug",
+      "description": "Крос-компіляція для BCM2711 (Cortex-A72, AArch64), режим Debug",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi4.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "rpi4-release",
+      "displayName": "Raspberry Pi 4 / 400 / CM4 — Release",
+      "description": "Крос-компіляція для BCM2711 (Cortex-A72, AArch64), режим Release",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi4.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "rpi5-debug",
+      "displayName": "Raspberry Pi 5 — Debug",
+      "description": "Крос-компіляція для BCM2712 (Cortex-A76, AArch64), режим Debug",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi5.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "rpi5-release",
+      "displayName": "Raspberry Pi 5 — Release",
+      "description": "Крос-компіляція для BCM2712 (Cortex-A76, AArch64), режим Release",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi5.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "yocto-debug",
+      "displayName": "Yocto Linux — Debug",
+      "description": "Крос-компіляція через Yocto SDK (активувати environment-setup-* перед використанням)",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Yocto.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "yocto-release",
+      "displayName": "Yocto Linux — Release",
+      "description": "Крос-компіляція через Yocto SDK (активувати environment-setup-* перед використанням)",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Yocto.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+
+  "buildPresets": [
+    { "name": "ubuntu2004-debug",   "configurePreset": "ubuntu2004-debug",   "jobs": 0 },
+    { "name": "ubuntu2004-release", "configurePreset": "ubuntu2004-release", "jobs": 0 },
+    { "name": "ubuntu2404-debug",   "configurePreset": "ubuntu2404-debug",   "jobs": 0 },
+    { "name": "ubuntu2404-release", "configurePreset": "ubuntu2404-release", "jobs": 0 },
+    { "name": "ubuntu2404-asan",    "configurePreset": "ubuntu2404-asan",    "jobs": 0 },
+    { "name": "rpi1-debug",         "configurePreset": "rpi1-debug",         "jobs": 0 },
+    { "name": "rpi1-release",       "configurePreset": "rpi1-release",       "jobs": 0 },
+    { "name": "rpi2-debug",         "configurePreset": "rpi2-debug",         "jobs": 0 },
+    { "name": "rpi2-release",       "configurePreset": "rpi2-release",       "jobs": 0 },
+    { "name": "rpi3-debug",         "configurePreset": "rpi3-debug",         "jobs": 0 },
+    { "name": "rpi3-release",       "configurePreset": "rpi3-release",       "jobs": 0 },
+    { "name": "rpi4-debug",         "configurePreset": "rpi4-debug",         "jobs": 0 },
+    { "name": "rpi4-release",       "configurePreset": "rpi4-release",       "jobs": 0 },
+    { "name": "rpi5-debug",         "configurePreset": "rpi5-debug",         "jobs": 0 },
+    { "name": "rpi5-release",       "configurePreset": "rpi5-release",       "jobs": 0 },
+    { "name": "yocto-debug",        "configurePreset": "yocto-debug",        "jobs": 0 },
+    { "name": "yocto-release",      "configurePreset": "yocto-release",      "jobs": 0 }
+  ],
+
+  "testPresets": [
+    {
+      "name": "ubuntu2004-debug",
+      "configurePreset": "ubuntu2004-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "ubuntu2404-debug",
+      "configurePreset": "ubuntu2404-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "ubuntu2404-asan",
+      "configurePreset": "ubuntu2404-asan",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 1 }
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+# Швидкий старт
+
+## 1. Встановлення крос-компіляторів
+
+```bash
+sudo ./scripts/install-toolchains.sh all
+```
+
+Для вибіркового встановлення:
+```bash
+sudo ./scripts/install-toolchains.sh rpi-arm64 ninja cmake
+```
+
+Доступні варіанти: `all`, `rpi-arm32`, `rpi-arm64`, `native20`, `native24`, `ninja`, `cmake`.
+
+---
+
+## 2. Отримання sysroot (необов'язково, але рекомендовано)
+
+Без sysroot — збірка можлива, але лінкування проти бібліотек цільової системи
+(OpenSSL, зв'язана з RPi, тощо) буде недоступне.
+
+### Варіант A: через Docker (найпростіший, без фізичного RPi)
+
+```bash
+# RPi 3 / 4 / 5 (AArch64)
+./scripts/get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
+
+# RPi 2 / 3 (32-bit)
+./scripts/get-sysroot-rpi.sh --method docker --arch arm/v7 --dest /srv/rpi2-sysroot
+```
+
+### Варіант B: з образу Raspberry Pi OS (.img)
+
+```bash
+# Завантажте образ з https://www.raspberrypi.com/software/operating-systems/
+# Наприклад: 2024-07-04-raspios-bookworm-arm64-lite.img.xz
+
+sudo ./scripts/get-sysroot-rpi.sh \
+    --method image \
+    --image 2024-07-04-raspios-bookworm-arm64-lite.img.xz \
+    --dest /srv/rpi4-sysroot
+```
+
+> Потрібен root (`sudo`) для монтування образу через losetup.
+
+### Варіант C: з живого Raspberry Pi
+
+```bash
+./scripts/get-sysroot-rpi.sh \
+    --method live \
+    --host 192.168.1.100 \
+    --user pi \
+    --dest /srv/rpi4-sysroot
+```
+
+### Отримання sysroot для Yocto
+
+```bash
+# 1. Встановити SDK (.sh інсталятор із Yocto build або з сервера)
+./scripts/get-sysroot-yocto.sh --method sdk --installer ./poky-glibc-*.sh
+
+# 2. Активувати SDK перед збіркою
+source /opt/poky/<version>/environment-setup-<target>-poky-linux
+
+# 3. Перевірити що SDK активоване
+./scripts/get-sysroot-yocto.sh --method check
+```
+
+---
+
+## 3. Збірка
+
+### Через CMake presets (рекомендовано)
+
+```bash
+# Список доступних пресетів
+cmake --list-presets
+
+# Конфігурація + збірка (нативна, Ubuntu 24.04)
+cmake --preset ubuntu2404-debug
+cmake --build --preset ubuntu2404-debug
+
+# Крос-компіляція для RPi 4 без sysroot
+cmake --preset rpi4-release
+cmake --build --preset rpi4-release
+
+# Крос-компіляція для RPi 4 зі sysroot
+cmake --preset rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+cmake --build --preset rpi4-release
+```
+
+### Через скрипт build.sh
+
+```bash
+./scripts/build.sh rpi4-release
+./scripts/build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+./scripts/build.sh ubuntu2404-asan
+```
+
+### Через cmake напряму (без presets)
+
+```bash
+cmake -B build/rpi4 \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/RaspberryPi4.cmake \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DRPI_SYSROOT=/srv/rpi4-sysroot
+cmake --build build/rpi4 -j$(nproc)
+```
+
+---
+
+## 4. Тести
+
+Тести запускаються лише для нативних пресетів (`ubuntu2004-*`, `ubuntu2404-*`).
+
+```bash
+# Всі тести
+ctest --preset ubuntu2404-debug
+
+# Один тест за ім'ям
+ctest --preset ubuntu2404-debug -R my_test_name
+
+# З виводом при помилці
+ctest --preset ubuntu2404-debug --output-on-failure
+```
+
+---
+
+## 5. Розгортання на RPi
+
+```bash
+# Зібрати
+./scripts/build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+
+# Розгорнути
+./scripts/deploy.sh \
+    --preset rpi4-release \
+    --host 192.168.1.100 \
+    --user pi \
+    --remote-dir /home/pi/my_app
+
+# Розгорнути та одразу запустити
+./scripts/deploy.sh \
+    --preset rpi4-release \
+    --host 192.168.1.100 \
+    --run my_app \
+    --run-args "--config /etc/app.cfg"
+```
+
+---
+
+## Швидкий сценарій: RPi 4, з нуля до запуску
+
+```bash
+# 1. Встановити інструменти
+sudo ./scripts/install-toolchains.sh rpi-arm64 ninja cmake
+
+# 2. Отримати sysroot (через Docker)
+./scripts/get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
+
+# 3. Зібрати
+./scripts/build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+
+# 4. Розгорнути
+./scripts/deploy.sh --preset rpi4-release --host 192.168.1.100 --user pi
+```

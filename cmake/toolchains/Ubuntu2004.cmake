@@ -1,0 +1,52 @@
+# cmake/toolchains/Ubuntu2004.cmake
+#
+# Toolchain для Ubuntu 20.04 LTS (Focal Fossa) — x86_64
+# Фіксує конкретну версію GCC для відтворюваних збірок.
+#
+# Ubuntu 20.04 постачає GCC 9 (default), GCC 10.
+# Для встановлення: sudo apt install gcc-10 g++-10
+#
+# Використання:
+#   cmake -B build -S . \
+#     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Ubuntu2004.cmake \
+#     [-DUBUNTU2004_GCC_VERSION=10]
+
+cmake_minimum_required(VERSION 3.20)
+
+# Нативна збірка — система та процесор залишаються поточними
+set(CMAKE_SYSTEM_NAME Linux)
+
+# --- Версія GCC -----------------------------------------------------------
+set(UBUNTU2004_GCC_VERSION "10"
+    CACHE STRING "Версія GCC для Ubuntu 20.04 (9 або 10)")
+
+set_property(CACHE UBUNTU2004_GCC_VERSION PROPERTY STRINGS "9" "10")
+
+# --- Пошук компілятора ----------------------------------------------------
+find_program(CMAKE_C_COMPILER   "gcc-${UBUNTU2004_GCC_VERSION}")
+find_program(CMAKE_CXX_COMPILER "g++-${UBUNTU2004_GCC_VERSION}")
+
+if(NOT CMAKE_C_COMPILER OR NOT CMAKE_CXX_COMPILER)
+    message(FATAL_ERROR
+        "\n[Toolchain] GCC ${UBUNTU2004_GCC_VERSION} не знайдено.\n"
+        "Встановіть: sudo apt install gcc-${UBUNTU2004_GCC_VERSION} "
+        "g++-${UBUNTU2004_GCC_VERSION}\n"
+        "Або змініть версію: -DUBUNTU2004_GCC_VERSION=9\n")
+endif()
+
+set(CMAKE_C_COMPILER   "${CMAKE_C_COMPILER}"   CACHE FILEPATH "C compiler"   FORCE)
+set(CMAKE_CXX_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "C++ compiler" FORCE)
+
+# --- Прапори оптимізації для x86_64 --------------------------------------
+# -march=x86-64    — базовий x86_64 (сумісність з будь-яким x86_64)
+# -mtune=generic   — оптимізація для "середнього" x86_64 процесора
+set(CMAKE_C_FLAGS_INIT   "-march=x86-64 -mtune=generic" CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "-march=x86-64 -mtune=generic" CACHE INTERNAL "")
+
+# Для нативної збірки пошук бібліотек та програм — стандартний
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+
+message(STATUS "[Ubuntu2004] Компілятор: ${CMAKE_C_COMPILER}")

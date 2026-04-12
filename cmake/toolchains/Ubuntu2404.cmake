@@ -1,0 +1,52 @@
+# cmake/toolchains/Ubuntu2404.cmake
+#
+# Toolchain для Ubuntu 24.04 LTS (Noble Numbat) — x86_64
+# Фіксує конкретну версію GCC для відтворюваних збірок.
+#
+# Ubuntu 24.04 постачає GCC 13 (default), GCC 14.
+# Для встановлення: sudo apt install gcc-13 g++-13
+#
+# Використання:
+#   cmake -B build -S . \
+#     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Ubuntu2404.cmake \
+#     [-DUBUNTU2404_GCC_VERSION=14]
+
+cmake_minimum_required(VERSION 3.20)
+
+set(CMAKE_SYSTEM_NAME Linux)
+
+# --- Версія GCC -----------------------------------------------------------
+set(UBUNTU2404_GCC_VERSION "13"
+    CACHE STRING "Версія GCC для Ubuntu 24.04 (13 або 14)")
+
+set_property(CACHE UBUNTU2404_GCC_VERSION PROPERTY STRINGS "13" "14")
+
+# --- Пошук компілятора ----------------------------------------------------
+find_program(CMAKE_C_COMPILER   "gcc-${UBUNTU2404_GCC_VERSION}")
+find_program(CMAKE_CXX_COMPILER "g++-${UBUNTU2404_GCC_VERSION}")
+
+if(NOT CMAKE_C_COMPILER OR NOT CMAKE_CXX_COMPILER)
+    message(FATAL_ERROR
+        "\n[Toolchain] GCC ${UBUNTU2404_GCC_VERSION} не знайдено.\n"
+        "Встановіть: sudo apt install gcc-${UBUNTU2404_GCC_VERSION} "
+        "g++-${UBUNTU2404_GCC_VERSION}\n"
+        "Або змініть версію: -DUBUNTU2404_GCC_VERSION=14\n")
+endif()
+
+set(CMAKE_C_COMPILER   "${CMAKE_C_COMPILER}"   CACHE FILEPATH "C compiler"   FORCE)
+set(CMAKE_CXX_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "C++ compiler" FORCE)
+
+# --- Прапори оптимізації для x86_64 --------------------------------------
+# -march=x86-64-v2  — розширений базовий x86_64 (SSE4.2, POPCNT), сумісний
+#                     із переважною більшістю x86_64 CPU, випущених після 2009.
+#                     Замініть на x86-64 якщо потрібна максимальна сумісність.
+# -mtune=generic    — збалансована оптимізація
+set(CMAKE_C_FLAGS_INIT   "-march=x86-64-v2 -mtune=generic" CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "-march=x86-64-v2 -mtune=generic" CACHE INTERNAL "")
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+
+message(STATUS "[Ubuntu2404] Компілятор: ${CMAKE_C_COMPILER}")
