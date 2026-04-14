@@ -32,7 +32,6 @@ set(LIBPNG_URL_HASH ""
 
 set(_png_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libpng.so")
 set(_png_inc "${EXTERNAL_INSTALL_PREFIX}/include")
-set(_png_hdr "${EXTERNAL_INSTALL_PREFIX}/include/png.h")
 
 if(USE_SYSTEM_LIBPNG)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -42,24 +41,14 @@ if(USE_SYSTEM_LIBPNG)
     message(STATUS "[LibPng] Системна бібліотека: ${PNG_LIBRARIES}")
 
 else()
-    # ── Збірка через ExternalProject ────────────────────────────────────────
-    # libpng встановлює libpng.so (симлінк) та libpng16.so (версований симлінк)
-    set(_png_lib16 "${EXTERNAL_INSTALL_PREFIX}/lib/libpng16.so")
-    if((EXISTS "${_png_lib}" OR EXISTS "${_png_lib16}") AND EXISTS "${_png_hdr}")
-        # Вже встановлено в EXTERNAL_INSTALL_PREFIX — просто створюємо target
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    # EXTERNAL_INSTALL_PREFIX вже у CMAKE_PREFIX_PATH (Common.cmake).
+    # NO_DEFAULT_PATH: не шукати в системі, тільки в EXTERNAL_INSTALL_PREFIX.
+    find_package(PNG QUIET NO_DEFAULT_PATH)
+    if(PNG_FOUND)
         message(STATUS "[LibPng] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
-        # Вибираємо файл що існує (libpng.so або libpng16.so)
-        if(EXISTS "${_png_lib}")
-            set(_png_actual_lib "${_png_lib}")
-        else()
-            set(_png_actual_lib "${_png_lib16}")
-        endif()
-
-        ep_imported_library(PNG::PNG "${_png_actual_lib}" "${_png_inc}")
-
     else()
-        # Треба зібрати
         message(STATUS "[LibPng] Буде зібрано з джерел (версія ${LIBPNG_VERSION})")
 
         set(_png_hash_arg "")
@@ -77,6 +66,7 @@ else()
         ExternalProject_Add(libpng_ep
             URL             "${LIBPNG_URL}"
             ${_png_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/libpng"
             CMAKE_ARGS      ${_png_cmake_args}
             BUILD_BYPRODUCTS "${_png_lib}"
             LOG_DOWNLOAD    ON
@@ -84,12 +74,9 @@ else()
             LOG_INSTALL     ON
         )
 
-        # Створюємо imported target з майбутніми шляхами.
-        # При крос-компіляції ці файли є target-бінарниками (ARM/ARM64).
         ep_imported_library_from_ep(PNG::PNG libpng_ep "${_png_lib}" "${_png_inc}")
     endif()
 endif()
 
 unset(_png_lib)
 unset(_png_inc)
-unset(_png_hdr)

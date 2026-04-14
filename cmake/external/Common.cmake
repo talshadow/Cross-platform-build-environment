@@ -5,7 +5,9 @@
 #
 # Надає:
 #   Змінні/кеш:
+#     BUILD_ROOT               — коренева директорія збірки (~/build)
 #     EXTERNAL_INSTALL_PREFIX  — префікс встановлення
+#     EP_SOURCES_DIR           — кеш завантажених архівів сорців
 #     USE_ORIGIN_RPATH         — прапор $ORIGIN rpath
 #     _EP_NPROC                — кількість паралельних задач
 #
@@ -36,15 +38,23 @@ if(_EP_NPROC EQUAL 0)
 endif()
 
 # ---------------------------------------------------------------------------
+# BUILD_ROOT — коренева директорія збірки
+# За замовчуванням ~/build, перевизначається через -DBUILD_ROOT=<path>
+if(NOT DEFINED BUILD_ROOT OR BUILD_ROOT STREQUAL "")
+    set(BUILD_ROOT "$ENV{HOME}/build"
+        CACHE PATH "Коренева директорія збірки (за замовч. ~/build)")
+endif()
+
+# ---------------------------------------------------------------------------
 # EXTERNAL_INSTALL_PREFIX
 #
-# За замовченням: ../External/<toolchain>/<BuildType>
-# де ..  — батьківська директорія відносно CMAKE_BINARY_DIR
+# База: ${BUILD_ROOT}/${CMAKE_PROJECT_NAME}/
+# Шлях: ${BUILD_ROOT}/${CMAKE_PROJECT_NAME}/external/<toolchain>/<BuildType>
 #
-# Приклади (CMAKE_BINARY_DIR = build/rpi4-release):
-#   RPi4 Release  → build/External/RaspberryPi4/Release
-#   Yocto Debug   → build/External/Yocto/Debug
-#   Нативна       → build/External/native/Debug
+# Приклади (BUILD_ROOT=~/build, PROJECT=MyApp):
+#   RPi4 Release  → ~/build/MyApp/external/RaspberryPi4/Release
+#   Yocto Debug   → ~/build/MyApp/external/Yocto/Debug
+#   Нативна       → ~/build/MyApp/external/native/Debug
 #
 # Назва тулчейна — ім'я файлу toolchain без розширення .cmake.
 # Якщо toolchain не заданий — "native".
@@ -57,19 +67,25 @@ if(NOT DEFINED EXTERNAL_INSTALL_PREFIX OR EXTERNAL_INSTALL_PREFIX STREQUAL "")
         set(_ep_toolchain_name "native")
     endif()
 
-    # ../External відносно CMAKE_BINARY_DIR
-    get_filename_component(_ep_bin_parent "${CMAKE_BINARY_DIR}" DIRECTORY)
     set(EXTERNAL_INSTALL_PREFIX
-        "${_ep_bin_parent}/External/${_ep_toolchain_name}/${CMAKE_BUILD_TYPE}"
+        "${BUILD_ROOT}/${CMAKE_PROJECT_NAME}/external/${_ep_toolchain_name}/${CMAKE_BUILD_TYPE}"
         CACHE PATH
-        "Префікс встановлення сторонніх бібліотек (за замовченням: ../External/<toolchain>/<BuildType>)"
+        "Префікс встановлення сторонніх бібліотек (за замовченням: \${BUILD_ROOT}/\${PROJECT}/external/<toolchain>/<BuildType>)"
     )
-    unset(_ep_bin_parent)
     unset(_ep_toolchain_name)
 endif()
 
 file(MAKE_DIRECTORY "${EXTERNAL_INSTALL_PREFIX}")
 message(STATUS "[ExternalDeps] Install prefix: ${EXTERNAL_INSTALL_PREFIX}")
+
+# EP_SOURCES_DIR — спільна директорія архівів сорців для всіх toolchain
+if(NOT DEFINED EP_SOURCES_DIR OR EP_SOURCES_DIR STREQUAL "")
+    set(EP_SOURCES_DIR
+        "${BUILD_ROOT}/${CMAKE_PROJECT_NAME}/external_sources"
+        CACHE PATH "Директорія кешу завантажених архівів сорців")
+endif()
+file(MAKE_DIRECTORY "${EP_SOURCES_DIR}")
+message(STATUS "[ExternalDeps] Sources cache: ${EP_SOURCES_DIR}")
 
 # Додаємо до CMAKE_PREFIX_PATH і CMAKE_FIND_ROOT_PATH щоб find_package
 # знаходив вже встановлені бібліотеки навіть у крос-режимі (ONLY mode).
@@ -94,6 +110,9 @@ function(ep_cmake_args out_var)
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_PREFIX}
         -DBUILD_SHARED_LIBS=ON
+        # Ізоляція: заборонити пошук системних бібліотек у дочірніх EP
+        -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+        -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
     )
 
     # Toolchain
@@ -224,4 +243,75 @@ function(_ep_collect_deps out_var)
         endif()
     endforeach()
     set(${out_var} ${_existing} PARENT_SCOPE)
+endfunction()
+
+# ---------------------------------------------------------------------------
+# _meson_generate_cross_file(<out_var>)
+#
+# Генерує файл meson-cross.ini для крос-компіляції (якщо CMAKE_CROSSCOMPILING).
+# Повертає в <out_var> список аргументів для meson setup:
+#   "--cross-file" "<шлях>" — при крос-компіляції
+#   "" (порожньо)           — при нативній збірці
+#
+# Залежить від CMake змінних: CMAKE_C/CXX_COMPILER, CMAKE_AR, CMAKE_STRIP,
+#   CMAKE_SYSTEM_PROCESSOR, CMAKE_SYSROOT.
+# ---------------------------------------------------------------------------
+function(_meson_generate_cross_file out_var)
+    if(NOT CMAKE_CROSSCOMPILING)
+        set(${out_var} "" PARENT_SCOPE)
+        return()
+    endif()
+
+    # Map CMAKE_SYSTEM_PROCESSOR → Meson cpu_family
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _proc)
+    if(_proc MATCHES "^aarch64|arm64")
+        set(_meson_cpu_family "aarch64")
+    elseif(_proc MATCHES "^arm")
+        set(_meson_cpu_family "arm")
+    elseif(_proc MATCHES "^x86_64|amd64")
+        set(_meson_cpu_family "x86_64")
+    elseif(_proc MATCHES "^i.86|^x86$")
+        set(_meson_cpu_family "x86")
+    elseif(_proc MATCHES "^riscv64")
+        set(_meson_cpu_family "riscv64")
+    else()
+        set(_meson_cpu_family "${_proc}")
+    endif()
+
+    # Бінарні утиліти зі змінних toolchain
+    set(_mc_ar    "${CMAKE_AR}")
+    set(_mc_strip "${CMAKE_STRIP}")
+    if(NOT _mc_ar)    set(_mc_ar    "ar")    endif()
+    if(NOT _mc_strip) set(_mc_strip "strip") endif()
+
+    # Рядки sysroot та pkg-config для секції [properties]
+    set(_mc_sysroot_line    "")
+    set(_mc_pkgconfig_line  "")
+    if(CMAKE_SYSROOT)
+        set(_mc_sysroot_line   "sys_root = '${CMAKE_SYSROOT}'")
+        set(_mc_pkgconfig_line
+            "pkg_config_libdir = '${CMAKE_SYSROOT}/usr/lib/pkgconfig:${CMAKE_SYSROOT}/usr/share/pkgconfig'")
+    endif()
+
+    set(_cross_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-cross.ini")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_ep_cfg")
+    file(WRITE "${_cross_file}"
+"[binaries]
+c = '${CMAKE_C_COMPILER}'
+cpp = '${CMAKE_CXX_COMPILER}'
+ar = '${_mc_ar}'
+strip = '${_mc_strip}'
+pkgconfig = 'pkg-config'
+
+[properties]
+${_mc_sysroot_line}
+${_mc_pkgconfig_line}
+
+[host_machine]
+system = 'linux'
+cpu_family = '${_meson_cpu_family}'
+cpu = '${_meson_cpu_family}'
+endian = 'little'
+")
+    set(${out_var} "--cross-file" "${_cross_file}" PARENT_SCOPE)
 endfunction()

@@ -7,12 +7,18 @@
 
 | Змінна | Крос-toolchain | Нативний toolchain | Опис |
 |---|---|---|---|
-| `CMAKE_SYSTEM_NAME` | **обов'язково** | не задавати | `"Linux"` для RPi/Yocto |
-| `CMAKE_SYSTEM_PROCESSOR` | **обов'язково** | не задавати | `aarch64`, `armv7l`, тощо |
-| `CMAKE_C_COMPILER` | **обов'язково** | необов'язково | повний шлях або ім'я |
-| `CMAKE_CXX_COMPILER` | **обов'язково** | необов'язково | повний шлях або ім'я |
-| `CMAKE_C_FLAGS_INIT` | **обов'язково** | рекомендовано | CPU-специфічні прапори |
-| `CMAKE_CXX_FLAGS_INIT` | **обов'язково** | рекомендовано | CPU-специфічні прапори |
+| `CMAKE_SYSTEM_NAME` | **обов'язково** | **обов'язково** | `"Linux"` |
+| `CMAKE_SYSTEM_PROCESSOR` | **обов'язково** | **обов'язково** | `aarch64`, `arm`, `x86_64`… |
+| `CMAKE_C_COMPILER` | **обов'язково** | **обов'язково** | повний шлях або ім'я |
+| `CMAKE_CXX_COMPILER` | **обов'язково** | **обов'язково** | повний шлях або ім'я |
+| `CMAKE_C_FLAGS_INIT` | **обов'язково** | **обов'язково** | CPU-специфічні прапори |
+| `CMAKE_CXX_FLAGS_INIT` | **обов'язково** | **обов'язково** | CPU-специфічні прапори |
+| `CMAKE_AR` / `CMAKE_RANLIB` | обов'язково | обов'язково для LTO | для нативного: `gcc-ar-<ver>` / `gcc-ranlib-<ver>` |
+
+> **Чому `CMAKE_SYSTEM_PROCESSOR` обов'язковий навіть для нативних toolchain:**
+> Без явного значення деякий код (включно з `OpenSSL.cmake` і `CrossCompileHelpers.cmake`)
+> отримає порожній рядок і некоректно визначить архітектуру. CMake не гарантує
+> автоматичного заповнення цієї змінної коли `CMAKE_SYSTEM_NAME` задається вручну.
 
 ---
 
@@ -22,7 +28,7 @@
 |---|---|
 | `set(CMAKE_C_FLAGS ...)` | перекриває прапори користувача; замість цього — `CMAKE_C_FLAGS_INIT` |
 | `message(FATAL_ERROR ...)` без перевірки `CMAKE_CROSSCOMPILING` | toolchain завантажується двічі; перша спроба може падати на умовах що ще не виконані |
-| `find_program()` / `find_library()` без `NO_DEFAULT_PATH` | може знайти хост-бібліотеку замість target |
+| `find_library()` без `NO_DEFAULT_PATH` у крос-toolchain | може знайти хост-бібліотеку замість target |
 | `set(CMAKE_BUILD_TYPE ...)` | задається пресетом або користувачем, не toolchain |
 | `project()` | toolchain не є проєктним файлом |
 
@@ -118,10 +124,10 @@ endif()
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 
-# CMAKE_SYSTEM_NAME НЕ задаємо — нативна збірка
-# CMAKE_SYSTEM_PROCESSOR НЕ задаємо
-
-include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")
+# Нативна збірка: CMAKE_SYSTEM_NAME та CMAKE_SYSTEM_PROCESSOR задаємо явно,
+# щоб уникнути порожніх значень при вручному завантаженні toolchain.
+set(CMAKE_SYSTEM_NAME      Linux)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 # Версія GCC (перевизначувана)
 set(UBUNTU2404_GCC_VERSION "13" CACHE STRING "Версія GCC")
@@ -129,14 +135,31 @@ set(UBUNTU2404_GCC_VERSION "13" CACHE STRING "Версія GCC")
 find_program(CMAKE_C_COMPILER   "gcc-${UBUNTU2404_GCC_VERSION}")
 find_program(CMAKE_CXX_COMPILER "g++-${UBUNTU2404_GCC_VERSION}")
 
-if(NOT CMAKE_C_COMPILER)
+if(NOT CMAKE_C_COMPILER OR NOT CMAKE_CXX_COMPILER)
     message(FATAL_ERROR "[Toolchain] gcc-${UBUNTU2404_GCC_VERSION} не знайдено.")
 endif()
+
+set(CMAKE_C_COMPILER   "${CMAKE_C_COMPILER}"   CACHE FILEPATH "C compiler"   FORCE)
+set(CMAKE_CXX_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "C++ compiler" FORCE)
+
+# gcc-ar / gcc-ranlib — обгортки з підтримкою LTO плагіну.
+# Обов'язкові для коректної роботи ENABLE_LTO=ON.
+find_program(_GCC_AR     "gcc-ar-${UBUNTU2404_GCC_VERSION}")
+find_program(_GCC_RANLIB "gcc-ranlib-${UBUNTU2404_GCC_VERSION}")
+find_program(_GCC_NM     "gcc-nm-${UBUNTU2404_GCC_VERSION}")
+if(_GCC_AR)     set(CMAKE_AR     "${_GCC_AR}"     CACHE FILEPATH "" FORCE) endif()
+if(_GCC_RANLIB) set(CMAKE_RANLIB "${_GCC_RANLIB}" CACHE FILEPATH "" FORCE) endif()
+if(_GCC_NM)     set(CMAKE_NM     "${_GCC_NM}"     CACHE FILEPATH "" FORCE) endif()
+unset(_GCC_AR) unset(_GCC_RANLIB) unset(_GCC_NM)
 
 set(CMAKE_C_FLAGS_INIT   "-march=x86-64-v2 -mtune=generic" CACHE INTERNAL "")
 set(CMAKE_CXX_FLAGS_INIT "-march=x86-64-v2 -mtune=generic" CACHE INTERNAL "")
 
-# Режими пошуку — не задаємо (нативна збірка)
+# Нативна збірка: режими пошуку BOTH (хост = target)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 ```
 
 ---

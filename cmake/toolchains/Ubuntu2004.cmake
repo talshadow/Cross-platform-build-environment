@@ -13,8 +13,8 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-# Нативна збірка — система та процесор залишаються поточними
-set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_NAME      Linux)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
 
 # --- Версія GCC -----------------------------------------------------------
 set(UBUNTU2004_GCC_VERSION "10"
@@ -37,6 +37,26 @@ endif()
 set(CMAKE_C_COMPILER   "${CMAKE_C_COMPILER}"   CACHE FILEPATH "C compiler"   FORCE)
 set(CMAKE_CXX_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "C++ compiler" FORCE)
 
+# --- Утиліти GCC (gcc-ar / gcc-ranlib потрібні для LTO) -------------------
+# gcc-ar та gcc-ranlib — обгортки над ar/ranlib з підтримкою LTO плагіну.
+# Без них `ar` не розуміє LTO-об'єкти і ENABLE_LTO=ON дасть помилку лінкування.
+find_program(_GCC_AR     "gcc-ar-${UBUNTU2004_GCC_VERSION}")
+find_program(_GCC_RANLIB "gcc-ranlib-${UBUNTU2004_GCC_VERSION}")
+find_program(_GCC_NM     "gcc-nm-${UBUNTU2004_GCC_VERSION}")
+
+if(_GCC_AR)
+    set(CMAKE_AR     "${_GCC_AR}"     CACHE FILEPATH "Archiver (LTO-aware)"  FORCE)
+endif()
+if(_GCC_RANLIB)
+    set(CMAKE_RANLIB "${_GCC_RANLIB}" CACHE FILEPATH "Ranlib (LTO-aware)"    FORCE)
+endif()
+if(_GCC_NM)
+    set(CMAKE_NM     "${_GCC_NM}"     CACHE FILEPATH "NM (LTO-aware)"        FORCE)
+endif()
+unset(_GCC_AR)
+unset(_GCC_RANLIB)
+unset(_GCC_NM)
+
 # --- Прапори оптимізації для x86_64 --------------------------------------
 # -march=x86-64    — базовий x86_64 (сумісність з будь-яким x86_64)
 # -mtune=generic   — оптимізація для "середнього" x86_64 процесора
@@ -49,4 +69,4 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
-message(STATUS "[Ubuntu2004] Компілятор: ${CMAKE_C_COMPILER}")
+message(STATUS "[Ubuntu2004] Компілятор: ${CMAKE_C_COMPILER}, AR: ${CMAKE_AR}")

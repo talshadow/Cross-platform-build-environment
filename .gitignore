@@ -1,0 +1,14 @@
+# CMake
+build/
+CMakeUserPresets.json
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

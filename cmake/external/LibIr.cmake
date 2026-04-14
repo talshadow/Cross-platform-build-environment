@@ -1,0 +1,90 @@
+# cmake/external/LibIr.cmake
+#
+# libir — бібліотека для роботи з інфрачервоним (IR) обладнанням.
+# TODO: уточнити репозиторій та URL для завантаження.
+#
+# Provides imported target:
+#   libir::libir  — SHARED IMPORTED
+#
+# Опції:
+#   USE_SYSTEM_LIBIR  — ON: find_package / OFF (default): ExternalProject
+#
+# Кеш-змінні:
+#   LIBIR_VERSION, LIBIR_URL, LIBIR_URL_HASH
+
+option(USE_SYSTEM_LIBIR
+    "Використовувати системну libir замість збірки з джерел"
+    OFF)
+
+set(LIBIR_VERSION "1.0.0"
+    CACHE STRING "Версія libir для збірки з джерел")
+
+# TODO: замінити на реальний URL репозиторію
+set(LIBIR_URL
+    ""
+    CACHE STRING "URL архіву libir")
+
+set(LIBIR_URL_HASH ""
+    CACHE STRING "SHA256 хеш архіву libir (порожньо = не перевіряти)")
+
+# ---------------------------------------------------------------------------
+
+set(_libir_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libir.so")
+set(_libir_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+
+if(USE_SYSTEM_LIBIR)
+    # ── Системна бібліотека ─────────────────────────────────────────────────
+    find_package(libir REQUIRED)
+    if(NOT TARGET libir::libir)
+        # Fallback: pkg-config
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(LIBIR REQUIRED IMPORTED_TARGET libir)
+            add_library(libir::libir ALIAS PkgConfig::LIBIR)
+        endif()
+    endif()
+    message(STATUS "[LibIr] Системна: libir::libir")
+
+else()
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(libir QUIET
+        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        NO_DEFAULT_PATH)
+
+    if(libir_FOUND)
+        message(STATUS "[LibIr] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
+
+    elseif(EXISTS "${_libir_lib}")
+        ep_imported_library(libir::libir "${_libir_lib}" "${_libir_inc}")
+        message(STATUS "[LibIr] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
+    elseif(LIBIR_URL STREQUAL "")
+        message(WARNING "[LibIr] LIBIR_URL не задано — встановіть -DLIBIR_URL=<url> або -DUSE_SYSTEM_LIBIR=ON")
+
+    else()
+        message(STATUS "[LibIr] Буде зібрано з джерел (${LIBIR_VERSION})")
+
+        set(_hash_arg "")
+        if(LIBIR_URL_HASH)
+            set(_hash_arg URL_HASH "SHA256=${LIBIR_URL_HASH}")
+        endif()
+
+        ep_cmake_args(_libir_cmake_args)
+
+        ExternalProject_Add(libir_ep
+            URL             "${LIBIR_URL}"
+            ${_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/libir"
+            CMAKE_ARGS      ${_libir_cmake_args}
+            BUILD_BYPRODUCTS "${_libir_lib}"
+            LOG_DOWNLOAD    ON
+            LOG_BUILD       ON
+            LOG_INSTALL     ON
+        )
+
+        ep_imported_library_from_ep(libir::libir libir_ep "${_libir_lib}" "${_libir_inc}")
+    endif()
+endif()
+
+unset(_libir_lib)
+unset(_libir_inc)

@@ -91,6 +91,18 @@
     },
 
     {
+      "name": "ubuntu2004-relwithdebinfo",
+      "displayName": "Ubuntu 20.04 — RelWithDebInfo",
+      "description": "Нативна збірка GCC 10, Ubuntu 20.04, Release з debug символами",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2004.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "UBUNTU2004_GCC_VERSION": "10"
+      }
+    },
+
+    {
       "name": "ubuntu2404-debug",
       "displayName": "Ubuntu 24.04 — Debug",
       "description": "Нативна збірка GCC 13, Ubuntu 24.04, режим Debug",
@@ -116,10 +128,115 @@
     },
 
     {
+      "name": "ubuntu2404-relwithdebinfo",
+      "displayName": "Ubuntu 24.04 — RelWithDebInfo",
+      "description": "Нативна збірка GCC 13, Ubuntu 24.04, Release з debug символами",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2404.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "UBUNTU2404_GCC_VERSION": "13"
+      }
+    },
+
+    {
       "name": "ubuntu2404-asan",
       "displayName": "Ubuntu 24.04 — Debug + ASAN + UBSAN",
       "description": "Debug збірка з санітайзерами для розробки",
       "inherits": "ubuntu2404-debug",
+      "cacheVariables": {
+        "ENABLE_ASAN": "ON",
+        "ENABLE_UBSAN": "ON"
+      }
+    },
+
+    {
+      "name": "base-clang",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Clang.cmake"
+    },
+
+    {
+      "name": "clang-debug",
+      "displayName": "Clang — Debug",
+      "description": "Нативна збірка системним Clang, режим Debug",
+      "inherits": "base-clang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "clang-release",
+      "displayName": "Clang — Release",
+      "description": "Нативна збірка системним Clang, режим Release з ThinLTO",
+      "inherits": "base-clang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON"
+      }
+    },
+
+    {
+      "name": "clang-relwithdebinfo",
+      "displayName": "Clang — RelWithDebInfo",
+      "description": "Нативна збірка системним Clang, Release з debug символами",
+      "inherits": "base-clang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "clang-asan",
+      "displayName": "Clang — Debug + ASAN + UBSAN",
+      "description": "Clang Debug з AddressSanitizer та UBSanitizer",
+      "inherits": "clang-debug",
+      "cacheVariables": {
+        "ENABLE_ASAN": "ON",
+        "ENABLE_UBSAN": "ON"
+      }
+    },
+
+    {
+      "name": "clang-tsan",
+      "displayName": "Clang — Debug + TSAN",
+      "description": "Clang Debug з ThreadSanitizer для виявлення гонок даних",
+      "inherits": "clang-debug",
+      "cacheVariables": {
+        "ENABLE_TSAN": "ON"
+      }
+    },
+
+    {
+      "name": "clang18-debug",
+      "displayName": "Clang 18 — Debug",
+      "description": "Нативна збірка Clang 18, режим Debug",
+      "inherits": "base-clang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CLANG_VERSION": "18"
+      }
+    },
+
+    {
+      "name": "clang18-release",
+      "displayName": "Clang 18 — Release",
+      "description": "Нативна збірка Clang 18, режим Release з ThinLTO",
+      "inherits": "base-clang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CLANG_VERSION": "18",
+        "ENABLE_LTO": "ON"
+      }
+    },
+
+    {
+      "name": "clang18-asan",
+      "displayName": "Clang 18 — Debug + ASAN + UBSAN",
+      "description": "Clang 18 Debug з AddressSanitizer та UBSanitizer",
+      "inherits": "clang18-debug",
       "cacheVariables": {
         "ENABLE_ASAN": "ON",
         "ENABLE_UBSAN": "ON"
@@ -149,6 +266,17 @@
     },
 
     {
+      "name": "rpi4-relwithdebinfo",
+      "displayName": "Raspberry Pi 4 / 400 / CM4 — RelWithDebInfo",
+      "description": "Крос-компіляція для BCM2711 (Cortex-A72, AArch64), Release з debug символами",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi4.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
       "name": "rpi5-debug",
       "displayName": "Raspberry Pi 5 — Debug",
       "description": "Крос-компіляція для BCM2712 (Cortex-A76, AArch64), режим Debug",
@@ -167,6 +295,17 @@
       "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi5.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "rpi5-relwithdebinfo",
+      "displayName": "Raspberry Pi 5 — RelWithDebInfo",
+      "description": "Крос-компіляція для BCM2712 (Cortex-A76, AArch64), Release з debug символами",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi5.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     },
 
@@ -190,6 +329,17 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+
+    {
+      "name": "yocto-relwithdebinfo",
+      "displayName": "Yocto Linux — RelWithDebInfo",
+      "description": "Крос-компіляція через Yocto SDK, Release з debug символами",
+      "inherits": "base-cross",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/Yocto.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
     }
   ],
 
@@ -198,17 +348,30 @@
     { "name": "native-release",        "configurePreset": "native-release",        "jobs": 0 },
     { "name": "native-relwithdebinfo", "configurePreset": "native-relwithdebinfo", "jobs": 0 },
     { "name": "native-asan",           "configurePreset": "native-asan",           "jobs": 0 },
-    { "name": "ubuntu2004-debug",   "configurePreset": "ubuntu2004-debug",   "jobs": 0 },
-    { "name": "ubuntu2004-release", "configurePreset": "ubuntu2004-release", "jobs": 0 },
-    { "name": "ubuntu2404-debug",   "configurePreset": "ubuntu2404-debug",   "jobs": 0 },
-    { "name": "ubuntu2404-release", "configurePreset": "ubuntu2404-release", "jobs": 0 },
-    { "name": "ubuntu2404-asan",    "configurePreset": "ubuntu2404-asan",    "jobs": 0 },
-    { "name": "rpi4-debug",         "configurePreset": "rpi4-debug",         "jobs": 0 },
-    { "name": "rpi4-release",       "configurePreset": "rpi4-release",       "jobs": 0 },
-    { "name": "rpi5-debug",         "configurePreset": "rpi5-debug",         "jobs": 0 },
-    { "name": "rpi5-release",       "configurePreset": "rpi5-release",       "jobs": 0 },
-    { "name": "yocto-debug",        "configurePreset": "yocto-debug",        "jobs": 0 },
-    { "name": "yocto-release",      "configurePreset": "yocto-release",      "jobs": 0 }
+    { "name": "ubuntu2004-debug",          "configurePreset": "ubuntu2004-debug",          "jobs": 0 },
+    { "name": "ubuntu2004-release",        "configurePreset": "ubuntu2004-release",        "jobs": 0 },
+    { "name": "ubuntu2004-relwithdebinfo", "configurePreset": "ubuntu2004-relwithdebinfo", "jobs": 0 },
+    { "name": "ubuntu2404-debug",          "configurePreset": "ubuntu2404-debug",          "jobs": 0 },
+    { "name": "ubuntu2404-release",        "configurePreset": "ubuntu2404-release",        "jobs": 0 },
+    { "name": "ubuntu2404-relwithdebinfo", "configurePreset": "ubuntu2404-relwithdebinfo", "jobs": 0 },
+    { "name": "ubuntu2404-asan",           "configurePreset": "ubuntu2404-asan",           "jobs": 0 },
+    { "name": "clang-debug",              "configurePreset": "clang-debug",              "jobs": 0 },
+    { "name": "clang-release",            "configurePreset": "clang-release",            "jobs": 0 },
+    { "name": "clang-relwithdebinfo",     "configurePreset": "clang-relwithdebinfo",     "jobs": 0 },
+    { "name": "clang-asan",              "configurePreset": "clang-asan",              "jobs": 0 },
+    { "name": "clang-tsan",              "configurePreset": "clang-tsan",              "jobs": 0 },
+    { "name": "clang18-debug",           "configurePreset": "clang18-debug",           "jobs": 0 },
+    { "name": "clang18-release",         "configurePreset": "clang18-release",         "jobs": 0 },
+    { "name": "clang18-asan",            "configurePreset": "clang18-asan",            "jobs": 0 },
+    { "name": "rpi4-debug",                "configurePreset": "rpi4-debug",                "jobs": 0 },
+    { "name": "rpi4-release",              "configurePreset": "rpi4-release",              "jobs": 0 },
+    { "name": "rpi4-relwithdebinfo",       "configurePreset": "rpi4-relwithdebinfo",       "jobs": 0 },
+    { "name": "rpi5-debug",                "configurePreset": "rpi5-debug",                "jobs": 0 },
+    { "name": "rpi5-release",              "configurePreset": "rpi5-release",              "jobs": 0 },
+    { "name": "rpi5-relwithdebinfo",       "configurePreset": "rpi5-relwithdebinfo",       "jobs": 0 },
+    { "name": "yocto-debug",               "configurePreset": "yocto-debug",               "jobs": 0 },
+    { "name": "yocto-release",             "configurePreset": "yocto-release",             "jobs": 0 },
+    { "name": "yocto-relwithdebinfo",      "configurePreset": "yocto-relwithdebinfo",      "jobs": 0 }
   ],
 
   "testPresets": [
@@ -239,6 +402,36 @@
     {
       "name": "ubuntu2404-asan",
       "configurePreset": "ubuntu2404-asan",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 1 }
+    },
+    {
+      "name": "clang-debug",
+      "configurePreset": "clang-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "clang-asan",
+      "configurePreset": "clang-asan",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 1 }
+    },
+    {
+      "name": "clang-tsan",
+      "configurePreset": "clang-tsan",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 1 }
+    },
+    {
+      "name": "clang18-debug",
+      "configurePreset": "clang18-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "clang18-asan",
+      "configurePreset": "clang18-asan",
       "output": { "outputOnFailure": true },
       "execution": { "jobs": 1 }
     }

@@ -101,13 +101,10 @@ if(USE_SYSTEM_OPENCV)
     message(STATUS "[OpenCV] Системна бібліотека версії ${OpenCV_VERSION}")
 
 else()
-    # ── Збірка через ExternalProject ────────────────────────────────────────
-    if(EXISTS "${_ocv_core}")
-        # Вже встановлено — find_package знайде через EXTERNAL_INSTALL_PREFIX
-        # (він вже у CMAKE_PREFIX_PATH / CMAKE_FIND_ROOT_PATH з Common.cmake)
-        message(STATUS "[OpenCV] Знайдено готову бібліотеку у ${_ocv_prefix}")
-        find_package(OpenCV REQUIRED HINTS "${_ocv_prefix}" NO_DEFAULT_PATH)
-        message(STATUS "[OpenCV] Завантажено OpenCV ${OpenCV_VERSION}")
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(OpenCV QUIET HINTS "${_ocv_prefix}" NO_DEFAULT_PATH)
+    if(OpenCV_FOUND)
+        message(STATUS "[OpenCV] Знайдено готову бібліотеку у ${_ocv_prefix} (${OpenCV_VERSION})")
 
     else()
         message(STATUS "[OpenCV] Буде зібрано з джерел (версія ${OPENCV_VERSION})")
@@ -124,6 +121,7 @@ else()
             ExternalProject_Add(opencv_contrib_ep
                 URL              "${OPENCV_CONTRIB_URL}"
                 ${_contrib_hash_arg}
+                DOWNLOAD_DIR     "${EP_SOURCES_DIR}/opencv_contrib"
                 SOURCE_DIR       "${_contrib_src}"
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND     ""
@@ -225,6 +223,7 @@ else()
         ExternalProject_Add(opencv_ep
             URL              "${OPENCV_URL}"
             ${_ocv_hash_arg}
+            DOWNLOAD_DIR     "${EP_SOURCES_DIR}/opencv"
             CMAKE_ARGS       ${_ocv_cmake_args}
             BUILD_BYPRODUCTS ${_ocv_byproducts}
             DEPENDS          ${_ocv_ep_depends}

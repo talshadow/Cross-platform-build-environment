@@ -46,6 +46,21 @@ set(_sb_all_lib_eps
     boost_ep
     opencv_contrib_ep
     opencv_ep
+    geographiclib_ep
+    eigen3_ep
+    libevent_ep
+    libcamera_ep
+    libpisp_ep
+    nlohmann_ep
+    boostdi_ep
+    boostsml_ep
+    easyprofiler_ep
+    ncnn_ep
+    libir_ep
+    airsim_ep
+    physfs_ep
+    physfscpp_ep
+    rpicamapps_ep
 )
 
 set(_sb_existing_eps "")
@@ -95,7 +110,9 @@ if(YOCTO_SDK_SYSROOT)
 endif()
 
 # Передаємо прапори USE_SYSTEM_* (щоб основний проєкт не намагався будувати зайве)
-foreach(_lib IN ITEMS LIBPNG LIBJPEG LIBTIFF BOOST OPENSSL OPENCV)
+foreach(_lib IN ITEMS LIBPNG LIBJPEG LIBTIFF BOOST OPENSSL OPENCV GEOGRAPHICLIB EIGEN3
+                      LIBEVENT LIBCAMERA LIBPISP NLOHMANN BOOSTDI BOOSTSML
+                      EASYPROFILER NCNN LIBIR AIRSIM PHYSYS PHYSYSCPP RPICAMAPPS)
     if(DEFINED USE_SYSTEM_${_lib})
         list(APPEND _sb_main_cmake_args
             -DUSE_SYSTEM_${_lib}=${USE_SYSTEM_${_lib}})

@@ -33,7 +33,6 @@ set(LIBTIFF_URL_HASH ""
 
 set(_tiff_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libtiff.so")
 set(_tiff_inc "${EXTERNAL_INSTALL_PREFIX}/include")
-set(_tiff_hdr "${EXTERNAL_INSTALL_PREFIX}/include/tiff.h")
 
 if(USE_SYSTEM_LIBTIFF)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -41,10 +40,10 @@ if(USE_SYSTEM_LIBTIFF)
     message(STATUS "[LibTiff] Системна бібліотека: ${TIFF_LIBRARIES}")
 
 else()
-    # ── Збірка через ExternalProject ────────────────────────────────────────
-    if(EXISTS "${_tiff_lib}" AND EXISTS "${_tiff_hdr}")
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(TIFF QUIET NO_DEFAULT_PATH)
+    if(TIFF_FOUND)
         message(STATUS "[LibTiff] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
-        ep_imported_library(TIFF::TIFF "${_tiff_lib}" "${_tiff_inc}")
 
     else()
         message(STATUS "[LibTiff] Буде зібрано з джерел (версія ${LIBTIFF_VERSION})")
@@ -93,6 +92,7 @@ else()
         ExternalProject_Add(libtiff_ep
             URL             "${LIBTIFF_URL}"
             ${_tiff_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/libtiff"
             CMAKE_ARGS      ${_tiff_cmake_args}
             BUILD_BYPRODUCTS "${_tiff_lib}"
             DEPENDS          ${_tiff_ep_targets}
@@ -107,4 +107,3 @@ endif()
 
 unset(_tiff_lib)
 unset(_tiff_inc)
-unset(_tiff_hdr)

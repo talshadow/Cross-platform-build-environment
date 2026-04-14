@@ -41,7 +41,6 @@ set(BOOST_URL_HASH ""
 
 set(_boost_inc     "${EXTERNAL_INSTALL_PREFIX}/include")
 set(_boost_lib_po  "${EXTERNAL_INSTALL_PREFIX}/lib/libboost_program_options.so")
-set(_boost_ver_hdr "${EXTERNAL_INSTALL_PREFIX}/include/boost/version.hpp")
 
 if(USE_SYSTEM_BOOST)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -49,14 +48,11 @@ if(USE_SYSTEM_BOOST)
     message(STATUS "[Boost] Системна бібліотека версії ${Boost_VERSION}")
 
 else()
-    # ── Збірка через ExternalProject ────────────────────────────────────────
-    if(EXISTS "${_boost_lib_po}" AND EXISTS "${_boost_ver_hdr}")
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(Boost QUIET COMPONENTS program_options NO_DEFAULT_PATH)
+    if(Boost_FOUND)
         message(STATUS "[Boost] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
-
-        ep_imported_interface(Boost::headers "${_boost_inc}")
-        ep_imported_library(Boost::program_options "${_boost_lib_po}" "${_boost_inc}")
-        target_link_libraries(Boost::program_options
-            INTERFACE Boost::headers)
+        # find_package(Boost) вже створив Boost::headers та Boost::program_options
 
     else()
         message(STATUS "[Boost] Буде зібрано з джерел (версія ${BOOST_VERSION})")
@@ -109,6 +105,7 @@ else()
         ExternalProject_Add(boost_ep
             URL              "${BOOST_URL}"
             ${_boost_hash_arg}
+            DOWNLOAD_DIR     "${EP_SOURCES_DIR}/boost"
             # bootstrap.sh завжди виконується на HOST (будує b2)
             CONFIGURE_COMMAND <SOURCE_DIR>/bootstrap.sh
                 --prefix=${EXTERNAL_INSTALL_PREFIX}
@@ -143,5 +140,4 @@ endif()
 
 unset(_boost_inc)
 unset(_boost_lib_po)
-unset(_boost_ver_hdr)
 unset(_boost_ver_underscored)

@@ -188,6 +188,7 @@ SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проє
 - `docs/spec-external.md` — контракт Lib*.cmake, API Common.cmake, кроки додавання бібліотеки
 - `docs/spec-toolchain.md` — обов'язкові змінні, заборони, подвійне завантаження
 - `docs/spec-modules.md` — повний API: сигнатури, параметри, поведінка при помилках
+- `docs/ide-setup.md` — налаштування Qt Creator і VS Code (пресети, IntelliSense, remote debug)
 
 ## Важливі особливості
 

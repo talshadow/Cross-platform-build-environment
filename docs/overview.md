@@ -18,6 +18,7 @@ Yocto Linux з host-систем Ubuntu 20.04 / 24.04.
 - [spec-external.md](spec-external.md) — контракти ExternalProject бібліотек
 - [spec-toolchain.md](spec-toolchain.md) — контракт toolchain файлів
 - [spec-modules.md](spec-modules.md) — повний API CMake модулів
+- [ide-setup.md](ide-setup.md) — налаштування Qt Creator та VS Code
 
 ---
 

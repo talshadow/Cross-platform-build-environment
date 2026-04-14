@@ -36,8 +36,6 @@ set(OPENSSL_URL_HASH ""
 # ---------------------------------------------------------------------------
 
 # OpenSSL 3.x: soname = libssl.so.3, libcrypto.so.3
-set(_ssl_lib     "${EXTERNAL_INSTALL_PREFIX}/lib/libssl.so")
-set(_crypto_lib  "${EXTERNAL_INSTALL_PREFIX}/lib/libcrypto.so")
 set(_ssl_lib3    "${EXTERNAL_INSTALL_PREFIX}/lib/libssl.so.3")
 set(_crypto_lib3 "${EXTERNAL_INSTALL_PREFIX}/lib/libcrypto.so.3")
 set(_ssl_inc     "${EXTERNAL_INSTALL_PREFIX}/include")
@@ -48,13 +46,11 @@ if(USE_SYSTEM_OPENSSL)
     message(STATUS "[OpenSSL] Системна бібліотека версії ${OPENSSL_VERSION_STRING}")
 
 else()
-    # ── Збірка через ExternalProject ────────────────────────────────────────
-    if(EXISTS "${_ssl_lib3}" AND EXISTS "${_crypto_lib3}")
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(OpenSSL QUIET NO_DEFAULT_PATH)
+    if(OPENSSL_FOUND)
         message(STATUS "[OpenSSL] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
-
-        ep_imported_library(OpenSSL::Crypto "${_crypto_lib3}" "${_ssl_inc}")
-        ep_imported_library(OpenSSL::SSL    "${_ssl_lib3}"    "${_ssl_inc}")
-        target_link_libraries(OpenSSL::SSL INTERFACE OpenSSL::Crypto)
+        # find_package(OpenSSL) вже створив OpenSSL::SSL та OpenSSL::Crypto
 
     else()
         message(STATUS "[OpenSSL] Буде зібрано з джерел (версія ${OPENSSL_VERSION})")
@@ -107,6 +103,15 @@ else()
 
         message(STATUS "[OpenSSL] Платформа: ${_ssl_platform}, cross-prefix: '${_ssl_cross_prefix}'")
 
+        # ── GNU Make — OpenSSL Configure генерує Makefile, не підтримує Ninja ──
+        # CMAKE_MAKE_PROGRAM може бути ninja при відповідному генераторі —
+        # тому шукаємо make/gmake явно.
+        find_program(_ssl_make
+            NAMES make gmake mingw32-make nmake
+            REQUIRED
+            DOC "Make для збірки OpenSSL: make/gmake (Linux), mingw32-make (MinGW), nmake (MSVC). Ninja не підтримується.")
+        message(STATUS "[OpenSSL] Make: ${_ssl_make}")
+
         # ── Формуємо аргументи для Configure ──────────────────────────────
         set(_ssl_configure_cmd
             <SOURCE_DIR>/Configure
@@ -135,10 +140,11 @@ else()
         ExternalProject_Add(openssl_ep
             URL              "${OPENSSL_URL}"
             ${_ssl_hash_arg}
+            DOWNLOAD_DIR     "${EP_SOURCES_DIR}/openssl"
             CONFIGURE_COMMAND ${_ssl_configure_cmd}
-            BUILD_COMMAND     ${CMAKE_MAKE_PROGRAM} -j${_EP_NPROC}
+            BUILD_COMMAND     ${_ssl_make} -j${_EP_NPROC}
             # install_sw: тільки бібліотеки/заголовки, без man-сторінок
-            INSTALL_COMMAND   ${CMAKE_MAKE_PROGRAM} install_sw
+            INSTALL_COMMAND   ${_ssl_make} install_sw
             BUILD_IN_SOURCE   ON
             # Тільки версовані файли — симлінки (.so) не є byproducts для Ninja
             BUILD_BYPRODUCTS
@@ -153,11 +159,11 @@ else()
         ep_imported_library_from_ep(OpenSSL::Crypto openssl_ep "${_crypto_lib3}" "${_ssl_inc}")
         ep_imported_library_from_ep(OpenSSL::SSL    openssl_ep "${_ssl_lib3}"    "${_ssl_inc}")
         target_link_libraries(OpenSSL::SSL INTERFACE OpenSSL::Crypto)
+
+        unset(_ssl_make)
     endif()
 endif()
 
-unset(_ssl_lib)
-unset(_crypto_lib)
 unset(_ssl_lib3)
 unset(_crypto_lib3)
 unset(_ssl_inc)

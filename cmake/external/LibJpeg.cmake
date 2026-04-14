@@ -33,7 +33,6 @@ set(LIBJPEG_URL_HASH ""
 
 set(_jpeg_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libjpeg.so")
 set(_jpeg_inc "${EXTERNAL_INSTALL_PREFIX}/include")
-set(_jpeg_hdr "${EXTERNAL_INSTALL_PREFIX}/include/jpeglib.h")
 
 if(USE_SYSTEM_LIBJPEG)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -41,10 +40,10 @@ if(USE_SYSTEM_LIBJPEG)
     message(STATUS "[LibJpeg] Системна бібліотека: ${JPEG_LIBRARIES}")
 
 else()
-    # ── Збірка через ExternalProject ────────────────────────────────────────
-    if(EXISTS "${_jpeg_lib}" AND EXISTS "${_jpeg_hdr}")
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(JPEG QUIET NO_DEFAULT_PATH)
+    if(JPEG_FOUND)
         message(STATUS "[LibJpeg] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
-        ep_imported_library(JPEG::JPEG "${_jpeg_lib}" "${_jpeg_inc}")
 
     else()
         message(STATUS "[LibJpeg] Буде зібрано з джерел (libjpeg-turbo ${LIBJPEG_VERSION})")
@@ -68,6 +67,7 @@ else()
         ExternalProject_Add(libjpeg_ep
             URL             "${LIBJPEG_URL}"
             ${_jpeg_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/libjpeg"
             CMAKE_ARGS      ${_jpeg_cmake_args}
             BUILD_BYPRODUCTS "${_jpeg_lib}"
             LOG_DOWNLOAD    ON
@@ -81,4 +81,3 @@ endif()
 
 unset(_jpeg_lib)
 unset(_jpeg_inc)
-unset(_jpeg_hdr)

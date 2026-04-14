@@ -1,0 +1,81 @@
+# cmake/external/PhySys.cmake
+#
+# PhysicsFS — портабельна абстракція файлової системи для ігор та застосунків.
+# Надає уніфікований доступ до архівів ZIP, 7z, ISO та інших як до файлової системи.
+# https://github.com/icculus/physfs
+#
+# Provides imported target:
+#   PhysicsFS::PhysicsFS  — SHARED IMPORTED
+#
+# Опції:
+#   USE_SYSTEM_PHYSYS  — ON: find_package / OFF (default): ExternalProject
+#
+# Кеш-змінні:
+#   PHYSYS_VERSION, PHYSYS_URL, PHYSYS_URL_HASH
+
+option(USE_SYSTEM_PHYSYS
+    "Використовувати системну PhysicsFS замість збірки з джерел"
+    OFF)
+
+set(PHYSYS_VERSION "release-3.2.0"
+    CACHE STRING "Версія PhysicsFS для збірки з джерел")
+
+set(PHYSYS_URL
+    "https://github.com/icculus/physfs/archive/refs/tags/${PHYSYS_VERSION}.tar.gz"
+    CACHE STRING "URL архіву PhysicsFS")
+
+set(PHYSYS_URL_HASH ""
+    CACHE STRING "SHA256 хеш архіву PhysicsFS (порожньо = не перевіряти)")
+
+# ---------------------------------------------------------------------------
+
+set(_physfs_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libphysfs.so")
+set(_physfs_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+
+if(USE_SYSTEM_PHYSYS)
+    # ── Системна бібліотека ─────────────────────────────────────────────────
+    find_package(PhysicsFS REQUIRED)
+    message(STATUS "[PhysicsFS] Системна: PhysicsFS::PhysicsFS")
+
+else()
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(PhysicsFS QUIET
+        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        NO_DEFAULT_PATH)
+
+    if(PhysicsFS_FOUND)
+        message(STATUS "[PhysicsFS] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
+
+    else()
+        message(STATUS "[PhysicsFS] Буде зібрано з джерел (${PHYSYS_VERSION})")
+
+        set(_hash_arg "")
+        if(PHYSYS_URL_HASH)
+            set(_hash_arg URL_HASH "SHA256=${PHYSYS_URL_HASH}")
+        endif()
+
+        ep_cmake_args(_physfs_cmake_args
+            -DPHYSFS_BUILD_STATIC=OFF
+            -DPHYSFS_BUILD_SHARED=ON
+            -DPHYSFS_BUILD_TEST=OFF
+            -DPHYSFS_BUILD_DOCS=OFF
+        )
+
+        ExternalProject_Add(physfs_ep
+            URL             "${PHYSYS_URL}"
+            ${_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/physfs"
+            CMAKE_ARGS      ${_physfs_cmake_args}
+            BUILD_BYPRODUCTS "${_physfs_lib}"
+            LOG_DOWNLOAD    ON
+            LOG_BUILD       ON
+            LOG_INSTALL     ON
+        )
+
+        ep_imported_library_from_ep(
+            PhysicsFS::PhysicsFS physfs_ep "${_physfs_lib}" "${_physfs_inc}")
+    endif()
+endif()
+
+unset(_physfs_lib)
+unset(_physfs_inc)
