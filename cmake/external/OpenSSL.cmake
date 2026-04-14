@@ -47,7 +47,7 @@ if(USE_SYSTEM_OPENSSL)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(OpenSSL QUIET NO_DEFAULT_PATH)
+    find_package(OpenSSL QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
     if(OPENSSL_FOUND)
         message(STATUS "[OpenSSL] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # find_package(OpenSSL) вже створив OpenSSL::SSL та OpenSSL::Crypto

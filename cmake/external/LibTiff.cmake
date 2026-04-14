@@ -41,7 +41,7 @@ if(USE_SYSTEM_LIBTIFF)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(TIFF QUIET NO_DEFAULT_PATH)
+    find_package(TIFF QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
     if(TIFF_FOUND)
         message(STATUS "[LibTiff] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 

@@ -49,7 +49,7 @@ if(USE_SYSTEM_BOOST)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(Boost QUIET COMPONENTS program_options NO_DEFAULT_PATH)
+    find_package(Boost QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" COMPONENTS program_options NO_DEFAULT_PATH)
     if(Boost_FOUND)
         message(STATUS "[Boost] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # find_package(Boost) вже створив Boost::headers та Boost::program_options

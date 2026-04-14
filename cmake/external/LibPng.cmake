@@ -42,9 +42,8 @@ if(USE_SYSTEM_LIBPNG)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    # EXTERNAL_INSTALL_PREFIX вже у CMAKE_PREFIX_PATH (Common.cmake).
-    # NO_DEFAULT_PATH: не шукати в системі, тільки в EXTERNAL_INSTALL_PREFIX.
-    find_package(PNG QUIET NO_DEFAULT_PATH)
+    # HINTS + NO_DEFAULT_PATH: шукати лише в EXTERNAL_INSTALL_PREFIX, не в системі.
+    find_package(PNG QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
     if(PNG_FOUND)
         message(STATUS "[LibPng] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 

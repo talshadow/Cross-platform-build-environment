@@ -41,7 +41,7 @@ if(USE_SYSTEM_LIBJPEG)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(JPEG QUIET NO_DEFAULT_PATH)
+    find_package(JPEG QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
     if(JPEG_FOUND)
         message(STATUS "[LibJpeg] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
