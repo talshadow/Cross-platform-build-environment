@@ -110,7 +110,39 @@ cmake --build build/rpi4 -j$(nproc)
 
 ---
 
-## 4. Тести
+## 4. Сторонні бібліотеки
+
+За замовчуванням бібліотеки (libpng, libjpeg, OpenSSL, Boost, OpenCV тощо)
+збираються з джерел через CMake ExternalProject і встановлюються у
+`build/External/<toolchain>/<BuildType>/`.
+
+### Підключення у CMakeLists.txt
+
+```cmake
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/external/ExternalDeps.cmake")
+
+target_link_libraries(my_app PRIVATE PNG::PNG JPEG::JPEG OpenSSL::SSL)
+```
+
+### Використати системну бібліотеку замість збірки
+
+```bash
+cmake --preset rpi4-release \
+    -DRPI_SYSROOT=/srv/rpi4-sysroot \
+    -DUSE_SYSTEM_OPENSSL=ON
+```
+
+### SuperBuild (рекомендовано для CI)
+
+```bash
+# Активувати SuperBuild — deps та основний проєкт як окремі EP
+cmake -DSUPERBUILD=ON --preset rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+cmake --build build/rpi4-release
+```
+
+---
+
+## 5. Тести
 
 Тести запускаються лише для нативних пресетів (`ubuntu2004-*`, `ubuntu2404-*`).
 
@@ -127,7 +159,7 @@ ctest --preset ubuntu2404-debug --output-on-failure
 
 ---
 
-## 5. Розгортання на RPi
+## 6. Розгортання на RPi
 
 ```bash
 # Зібрати

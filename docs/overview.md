@@ -13,6 +13,16 @@ Yocto Linux з host-систем Ubuntu 20.04 / 24.04.
 
 ## Структура файлів
 
+Детальні специфікації:
+- [spec-presets.md](spec-presets.md) — формат і конвенції CMakePresets.json
+- [spec-external.md](spec-external.md) — контракти ExternalProject бібліотек
+- [spec-toolchain.md](spec-toolchain.md) — контракт toolchain файлів
+- [spec-modules.md](spec-modules.md) — повний API CMake модулів
+
+---
+
+## Структура файлів
+
 ```
 SupportRaspberryPI/
 │
@@ -31,10 +41,23 @@ SupportRaspberryPI/
 │   │   ├── Ubuntu2004.cmake    # x86_64, GCC 9/10
 │   │   └── Ubuntu2404.cmake    # x86_64, GCC 13/14
 │   │
-│   └── modules/
-│       ├── CompilerWarnings.cmake    # target_enable_warnings()
-│       ├── Sanitizers.cmake          # target_enable_sanitizers()
-│       └── CrossCompileHelpers.cmake # cross_check_cxx_flag(), cross_feature_check()
+│   ├── modules/
+│   │   ├── CompilerWarnings.cmake    # target_enable_warnings()
+│   │   ├── Sanitizers.cmake          # target_enable_sanitizers()
+│   │   ├── CrossCompileHelpers.cmake # cross_check_cxx_flag(), cross_feature_check()
+│   │   └── GitVersion.cmake          # git_get_version(), git_get_commit_hash()
+│   │
+│   ├── external/
+│   │   ├── Common.cmake        # Спільні утиліти ExternalProject
+│   │   ├── ExternalDeps.cmake  # Головна точка підключення залежностей
+│   │   ├── LibPng.cmake        # libpng (PNG::PNG)
+│   │   ├── LibJpeg.cmake       # libjpeg-turbo (JPEG::JPEG)
+│   │   ├── LibTiff.cmake       # libtiff (TIFF::TIFF)
+│   │   ├── OpenSSL.cmake       # OpenSSL (OpenSSL::SSL, OpenSSL::Crypto)
+│   │   ├── Boost.cmake         # Boost (Boost::headers, ...)
+│   │   └── OpenCV.cmake        # OpenCV (opencv_core, ...)
+│   │
+│   └── SuperBuild.cmake        # Superbuild режим (всі deps + main як EP)
 │
 ├── scripts/
 │   ├── install-toolchains.sh   # Встановити крос-компілятори (apt)
@@ -205,6 +228,95 @@ endif()
 cross_get_target_info()
 ```
 
+### GitVersion.cmake
+
+Отримання версії та хешу коміту з git під час конфігурації CMake.
+
+```cmake
+include(GitVersion)
+
+# Версія з найближчого тегу (формат X.Y.Z або vX.Y.Z), інакше FALLBACK
+git_get_version(PROJECT_VERSION FALLBACK "0.1.0")
+
+# Скорочений хеш HEAD (за замовчуванням 7 символів)
+git_get_commit_hash(GIT_HASH)
+git_get_commit_hash(GIT_HASH_LONG LENGTH 12)
+
+message(STATUS "Version: ${PROJECT_VERSION}  Commit: ${GIT_HASH}")
+
+# Типове використання — вбудувати у бінарник через configure_file
+configure_file(version.h.in version.h @ONLY)
+```
+
+Якщо `git` не знайдено або тег відсутній — повертається значення `FALLBACK`
+(за замовчуванням `"0.0.0"`). Якщо HEAD недоступний — хеш повертається як
+`"unknown"`.
+
+---
+
+## Сторонні бібліотеки (cmake/external/)
+
+### Режим inline (за замовчуванням)
+
+Підключіть `ExternalDeps.cmake` з кореневого `CMakeLists.txt`:
+
+```cmake
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/external/ExternalDeps.cmake")
+
+# Далі можна лінкувати до зібраних imported targets:
+target_link_libraries(my_app PRIVATE PNG::PNG JPEG::JPEG OpenSSL::SSL)
+```
+
+Кожна бібліотека підтримує два режими через опцію `USE_SYSTEM_<LIB>`:
+
+| Опція | Значення за замовч. | Поведінка |
+|---|---|---|
+| `USE_SYSTEM_LIBPNG` | `OFF` | зібрати з джерел через ExternalProject |
+| `USE_SYSTEM_LIBJPEG` | `OFF` | зібрати з джерел через ExternalProject |
+| `USE_SYSTEM_LIBTIFF` | `OFF` | зібрати з джерел через ExternalProject |
+| `USE_SYSTEM_OPENSSL` | `OFF` | зібрати з джерел через ExternalProject |
+| `USE_SYSTEM_BOOST` | `OFF` | зібрати з джерел через ExternalProject |
+| `USE_SYSTEM_OPENCV` | `OFF` | зібрати з джерел через ExternalProject |
+
+```bash
+# Використати системний OpenSSL замість збірки з джерел
+cmake --preset rpi4-release -DUSE_SYSTEM_OPENSSL=ON -DRPI_SYSROOT=/srv/rpi4-sysroot
+```
+
+Бібліотеки встановлюються у `build/External/<toolchain>/<BuildType>/`.
+
+### Режим SuperBuild
+
+SuperBuild будує всі залежності як окремі ExternalProject, потім основний
+проєкт — теж як ExternalProject. Зручно для CI: deps кешуються між запусками.
+
+```cmake
+# CMakeLists.txt
+if(SUPERBUILD)
+    include(cmake/SuperBuild.cmake)
+    return()
+endif()
+```
+
+```bash
+# Перша збірка (збирає deps + основний проєкт)
+cmake -DSUPERBUILD=ON -B build-super --preset rpi4-release
+cmake --build build-super
+
+# Після зміни коду — тільки основний проєкт перебудовується
+cmake --build build-super
+```
+
+### Порядок залежностей
+
+```
+LibPng  ──┐
+LibJpeg ──┼──▶ LibTiff ──┐
+          │               ├──▶ OpenCV
+OpenSSL ──┘               │
+Boost   ──────────────────┘
+```
+
 ---
 
 ## Підключення до власного CMakeLists.txt
@@ -216,6 +328,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 include(CompilerWarnings)
 include(Sanitizers)
 include(CrossCompileHelpers)
+include(GitVersion)
+
+git_get_version(PROJECT_VERSION)
+git_get_commit_hash(GIT_HASH)
 
 add_executable(my_app src/main.cpp)
 target_enable_warnings(my_app STRICT)
