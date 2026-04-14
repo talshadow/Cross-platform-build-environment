@@ -20,11 +20,39 @@ set(CMAKE_SYSTEM_PROCESSOR aarch64)
 set(RPI4_TOOLCHAIN_PREFIX "aarch64-linux-gnu"
     CACHE STRING "Префікс крос-компілятора для Raspberry Pi 4")
 
+set(RPI4_GCC_VERSION "12"
+    CACHE STRING "Версія GCC для крос-компіляції RPi 4 (12, 13, ...)")
+
 set(_TOOLCHAIN_PREFIX_VAR RPI4_TOOLCHAIN_PREFIX)
 include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")
-cross_toolchain_find_compiler(
-    "${RPI4_TOOLCHAIN_PREFIX}"
-    "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu")
+
+# Шукаємо версований компілятор (aarch64-linux-gnu-gcc-12),
+# якщо не знайдено — fallback на неверсований (aarch64-linux-gnu-gcc)
+find_program(_RPI4_CC_VERSIONED
+    "${RPI4_TOOLCHAIN_PREFIX}-gcc-${RPI4_GCC_VERSION}")
+
+if(_RPI4_CC_VERSIONED)
+    set(CMAKE_C_COMPILER   "${RPI4_TOOLCHAIN_PREFIX}-gcc-${RPI4_GCC_VERSION}"
+        CACHE FILEPATH "C compiler" FORCE)
+    set(CMAKE_CXX_COMPILER "${RPI4_TOOLCHAIN_PREFIX}-g++-${RPI4_GCC_VERSION}"
+        CACHE FILEPATH "C++ compiler" FORCE)
+    find_program(_AR    "${RPI4_TOOLCHAIN_PREFIX}-ar")
+    find_program(_STRIP "${RPI4_TOOLCHAIN_PREFIX}-strip")
+    find_program(_RANLIB "${RPI4_TOOLCHAIN_PREFIX}-ranlib")
+    if(_AR)     set(CMAKE_AR     "${_AR}"     CACHE FILEPATH "Archiver" FORCE) endif()
+    if(_STRIP)  set(CMAKE_STRIP  "${_STRIP}"  CACHE FILEPATH "Strip"    FORCE) endif()
+    if(_RANLIB) set(CMAKE_RANLIB "${_RANLIB}" CACHE FILEPATH "Ranlib"   FORCE) endif()
+    unset(_AR) unset(_STRIP) unset(_RANLIB)
+else()
+    message(WARNING
+        "[RaspberryPi4] gcc-${RPI4_GCC_VERSION} не знайдено, "
+        "використовується неверсований aarch64-linux-gnu-gcc. "
+        "Встановіть: sudo apt install gcc-${RPI4_GCC_VERSION}-aarch64-linux-gnu")
+    cross_toolchain_find_compiler(
+        "${RPI4_TOOLCHAIN_PREFIX}"
+        "gcc-${RPI4_GCC_VERSION}-aarch64-linux-gnu g++-${RPI4_GCC_VERSION}-aarch64-linux-gnu")
+endif()
+unset(_RPI4_CC_VERSIONED)
 
 # --- CPU-специфічні прапори -----------------------------------------------
 # -mcpu=cortex-a72  — Cortex-A72 (BCM2711), ARMv8-A + CRC + Crypto

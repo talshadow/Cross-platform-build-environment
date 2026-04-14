@@ -35,6 +35,11 @@ cmake --preset rpi1-release -DRPI1_TOOLCHAIN_PREFIX=/opt/rpi-tools/arm-linux-gnu
 
 ---
 
+> **Примітка:** RPi 4 та RPi 5 використовують `gcc-12-aarch64-linux-gnu` за замовчуванням.
+> Змінити версію: `-DRPI4_GCC_VERSION=13`.
+
+---
+
 ## Raspberry Pi 2 — `RaspberryPi2.cmake`
 
 | Параметр | Значення |
@@ -72,9 +77,9 @@ cmake --preset rpi1-release -DRPI1_TOOLCHAIN_PREFIX=/opt/rpi-tools/arm-linux-gnu
 | SoC | BCM2711 |
 | CPU | Cortex-A72 × 4 |
 | ISA | ARMv8-A, 64-bit |
-| Компілятор | `aarch64-linux-gnu-gcc` |
+| Компілятор | `aarch64-linux-gnu-gcc-12` (за замовч.), fallback на `aarch64-linux-gnu-gcc` |
 | CPU прапори | `-mcpu=cortex-a72+crc+simd` |
-| Пресети | `rpi4-debug`, `rpi4-release` |
+| Пресети | `rpi4-debug`, `rpi4-release`, `rpi4-relwithdebinfo` |
 
 ---
 
@@ -85,9 +90,9 @@ cmake --preset rpi1-release -DRPI1_TOOLCHAIN_PREFIX=/opt/rpi-tools/arm-linux-gnu
 | SoC | BCM2712 |
 | CPU | Cortex-A76 × 4 |
 | ISA | ARMv8.2-A, 64-bit |
-| Компілятор | `aarch64-linux-gnu-gcc` (GCC 12+ рекомендовано) |
+| Компілятор | `aarch64-linux-gnu-gcc-13` (за замовч.), fallback на `aarch64-linux-gnu-gcc` |
 | CPU прапори | `-mcpu=cortex-a76+crc+simd+crypto+dotprod` |
-| Пресети | `rpi5-debug`, `rpi5-release` |
+| Пресети | `rpi5-debug`, `rpi5-release`, `rpi5-relwithdebinfo` |
 
 ---
 

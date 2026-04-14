@@ -41,7 +41,7 @@ base  (hidden)
 
 | Частина | Допустимі значення |
 |---|---|
-| `platform` | `ubuntu2004`, `ubuntu2404`, `rpi1`, `rpi2`, `rpi3`, `rpi4`, `rpi5`, `yocto` |
+| `platform` | `ubuntu2004`, `ubuntu2404`, `rpi4`, `rpi5`, `yocto` |
 | `buildtype` | `debug`, `release` |
 | `variant` | `asan`, `tsan`, (майбутні: `lto`, `coverage`) |
 

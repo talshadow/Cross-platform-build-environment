@@ -84,14 +84,17 @@ install_rpi_arm32() {
 }
 
 install_rpi_arm64() {
-    log_info "=== Крос-компілятор RPi 3/4/5 (aarch64-linux-gnu) ==="
+    log_info "=== Крос-компілятори RPi 4 (GCC 12) та RPi 5 (GCC 13) ==="
     install_packages \
-        gcc-aarch64-linux-gnu \
-        g++-aarch64-linux-gnu \
+        gcc-12-aarch64-linux-gnu \
+        g++-12-aarch64-linux-gnu \
+        gcc-13-aarch64-linux-gnu \
+        g++-13-aarch64-linux-gnu \
         binutils-aarch64-linux-gnu
 
     log_info "Перевірка:"
-    aarch64-linux-gnu-gcc --version | head -1
+    aarch64-linux-gnu-gcc-12 --version | head -1
+    aarch64-linux-gnu-gcc-13 --version | head -1
 }
 
 install_native_gcc_ubuntu20() {

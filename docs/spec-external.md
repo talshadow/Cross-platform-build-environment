@@ -53,40 +53,91 @@ set(LIBFOO_URL     "https://..." CACHE STRING "URL архіву")
 set(LIBFOO_URL_HASH ""          CACHE STRING "SHA256 хеш (порожньо = не перевіряти)")
 ```
 
-### 4. Перевіряти кеш перед запуском ExternalProject
+### 4. КРИТИЧНО: ізолювати залежності від системних бібліотек
+
+Якщо бібліотека залежить від інших external бібліотек — **обов'язково**:
+
+**а) Передати явні шляхи до наших артефактів:**
+```cmake
+-DJPEG_LIBRARY=${EXTERNAL_INSTALL_PREFIX}/lib/libjpeg.so
+-DJPEG_INCLUDE_DIR=${EXTERNAL_INSTALL_PREFIX}/include
+-DPNG_LIBRARY=${EXTERNAL_INSTALL_PREFIX}/lib/libpng.so
+-DPNG_PNG_INCLUDE_DIR=${EXTERNAL_INSTALL_PREFIX}/include
+```
+
+**б) Явно вимкнути системний пошук цих залежностей:**
+```cmake
+# Глобально — вимкнути пошук у системних шляхах:
+-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+-DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
+
+# Або бібліотечно-специфічні прапори (де підтримуються):
+-DWITH_JPEG=ON   # використовувати наш libjpeg
+-DBUILD_JPEG=OFF # НЕ збирати bundled копію
+```
+
+**Наслідок порушення:** бібліотека мовчки лінкується проти системної версії —
+критична помилка при крос-компіляції (ABI несумісність, неправильна архітектура).
+
+### 5. Алгоритм вибору між кешем та збіркою
+
+```
+USE_SYSTEM_<LIB>=ON?
+    ├── Так → find_package(Foo REQUIRED)          [системний / sysroot]
+    └── Ні  →
+            find_package(Foo QUIET
+                HINTS "${EXTERNAL_INSTALL_PREFIX}"
+                NO_DEFAULT_PATH)
+            ├── Знайдено → target готовий, ExternalProject_Add НЕ викликається
+            └── Не знайдено → ExternalProject_Add(libfoo_ep ...)
+                              ep_imported_library_from_ep(Foo::Foo ...)
+```
+
+**Реалізація:**
 
 ```cmake
-if(EXISTS "${_foo_lib}" AND EXISTS "${_foo_hdr}")
-    # Вже встановлено — просто створити target, не перезбирати
-    ep_imported_library(Foo::Foo "${_foo_lib}" "${_foo_inc}")
+if(USE_SYSTEM_LIBFOO)
+    find_package(Foo REQUIRED)
+
 else()
-    ExternalProject_Add(libfoo_ep ...)
-    ep_imported_library_from_ep(Foo::Foo libfoo_ep "${_foo_lib}" "${_foo_inc}")
+    find_package(Foo QUIET
+        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        NO_DEFAULT_PATH)
+
+    if(Foo_FOUND)
+        message(STATUS "[LibFoo] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
+
+    else()
+        message(STATUS "[LibFoo] Буде зібрано з джерел (версія ${LIBFOO_VERSION})")
+
+        ep_cmake_args(_foo_cmake_args -DFOO_SHARED=ON -DFOO_TESTS=OFF)
+
+        ExternalProject_Add(libfoo_ep
+            URL          "${LIBFOO_URL}"
+            DOWNLOAD_DIR "${EP_SOURCES_DIR}/libfoo"
+            CMAKE_ARGS   ${_foo_cmake_args}
+            BUILD_BYPRODUCTS "${_foo_lib}"
+            LOG_DOWNLOAD ON
+            LOG_BUILD    ON
+            LOG_INSTALL  ON
+        )
+
+        ep_imported_library_from_ep(Foo::Foo libfoo_ep "${_foo_lib}" "${_foo_inc}")
+    endif()
 endif()
 ```
 
-Шляхи визначаються відносно `EXTERNAL_INSTALL_PREFIX`.
+**Ключові правила:**
+- `NO_DEFAULT_PATH` — `find_package` шукає **тільки** в `EXTERNAL_INSTALL_PREFIX`
+- `QUIET` — не падати якщо не знайдено (очікувана ситуація при першій збірці)
+- Якщо знайдено — `ExternalProject_Add` **не викликається**
 
-### 5. Використовувати ep_cmake_args() для аргументів збірки
-
-```cmake
-ep_cmake_args(_foo_cmake_args
-    -DFOO_SHARED=ON
-    -DFOO_TESTS=OFF
-)
-ExternalProject_Add(libfoo_ep
-    URL          "${LIBFOO_URL}"
-    CMAKE_ARGS   ${_foo_cmake_args}
-    BUILD_BYPRODUCTS "${_foo_lib}"
-    LOG_DOWNLOAD ON
-    LOG_BUILD    ON
-    LOG_INSTALL  ON
-)
-```
+### 6. Використовувати ep_cmake_args() для аргументів збірки
 
 `ep_cmake_args()` автоматично передає toolchain, sysroot, компілятори, RPATH.
+Додаткові аргументи передаються через `ARGN`.
 
-### 6. Прибирати локальні змінні
+### 7. Прибирати локальні змінні
 
 ```cmake
 unset(_foo_lib)
@@ -98,21 +149,97 @@ unset(_foo_hdr)
 
 ## Common.cmake — API утиліт
 
-### EXTERNAL_INSTALL_PREFIX
+### Структура директорій збірки
 
-Шлях встановлення всіх сторонніх бібліотек.
+Всі артефакти збірки розміщуються у спільній кореневій директорії
+`<BUILD_ROOT>/<project_name>/`.
+
+**За замовчуванням** (`BUILD_ROOT` не задано → `~/build`):
 
 ```
-build/External/<toolchain>/<BuildType>/
+~/build/
+└── SupportRaspberryPI/
+    ├── external_sources/          ← EP_SOURCES_DIR
+    │   ├── libpng/
+    │   ├── libjpeg/
+    │   ├── libtiff/
+    │   ├── openssl/
+    │   ├── boost/
+    │   ├── opencv/
+    │   └── opencv_contrib/
+    ├── external/                  ← EXTERNAL_INSTALL_PREFIX root
+    │   ├── RaspberryPi4/Release/
+    │   └── Ubuntu2404/Debug/
+    ├── rpi4-release/              ← preset build dirs
+    └── ubuntu2404-debug/
+```
+
+**З `-DBUILD_ROOT=/mnt/nvme/proj`:**
+
+```
+/mnt/nvme/proj/
+└── SupportRaspberryPI/
+    ├── external_sources/
+    ├── external/
+    │   ├── RaspberryPi4/Release/
+    │   └── Ubuntu2404/Debug/
+    ├── rpi4-release/
+    └── ubuntu2404-debug/
+```
+
+---
+
+### BUILD_ROOT
+
+Cmake-параметр що замінює кореневу директорію збірки.
+
+```bash
+# за замовчуванням: ~/build/SupportRaspberryPI/
+cmake --preset rpi4-release
+
+# перевизначення кореня
+cmake --preset rpi4-release -DBUILD_ROOT=/mnt/nvme/proj
+```
+
+Ім'я проєкту (`SupportRaspberryPI`) підставляється автоматично через
+`CMAKE_PROJECT_NAME`.
+
+---
+
+### EXTERNAL_INSTALL_PREFIX
+
+Шлях встановлення скомпільованих сторонніх бібліотек.
+
+```
+<BUILD_ROOT>/<project_name>/external/<toolchain>/<BuildType>/
 ```
 
 Приклади:
-- `build/External/RaspberryPi4/Release`
-- `build/External/native/Debug`
+- `~/build/SupportRaspberryPI/external/RaspberryPi4/Release`
+- `~/build/SupportRaspberryPI/external/native/Debug`
 
 Можна перевизначити через `-DEXTERNAL_INSTALL_PREFIX=<path>`.
 
 Автоматично додається до `CMAKE_PREFIX_PATH` і `CMAKE_FIND_ROOT_PATH`.
+
+---
+
+### EP_SOURCES_DIR
+
+Спільна директорія для кешування заван��ажених архівів сорців.
+
+```
+<BUILD_ROOT>/<project_name>/external_sources/
+```
+
+**Ключова властивість:** архів `libpng-1.6.43.tar.gz` завантажується **один раз**
+і повторно використовується при збірці під будь-який toolchain чи build type.
+Вилучення та компіляція — окремі для кожної конфігурації.
+
+Можна перевизначити через `-DEP_SOURCES_DIR=<path>`.
+
+Кожен `ExternalProject_Add` передає `DOWNLOAD_DIR "${EP_SOURCES_DIR}/<libname>"`.
+Шаблон іменування підтеки — ім'я бібліотеки в нижньому регістрі без версії.
 
 ---
 
@@ -252,14 +379,22 @@ set(LIBNEW_URL_HASH "" CACHE STRING "SHA256 хеш (порожньо = не пе
 
 set(_new_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libnew.so")
 set(_new_inc "${EXTERNAL_INSTALL_PREFIX}/include")
-set(_new_hdr "${EXTERNAL_INSTALL_PREFIX}/include/new.h")
 
 if(USE_SYSTEM_LIBNEW)
     find_package(New REQUIRED)
+    message(STATUS "[LibNew] Системна бібліотека: ${NEW_LIBRARIES}")
+
 else()
-    if(EXISTS "${_new_lib}" AND EXISTS "${_new_hdr}")
-        ep_imported_library(New::New "${_new_lib}" "${_new_inc}")
+    find_package(New QUIET
+        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        NO_DEFAULT_PATH)
+
+    if(New_FOUND)
+        message(STATUS "[LibNew] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
+        message(STATUS "[LibNew] Буде зібрано з джерел (версія ${LIBNEW_VERSION})")
+
         set(_new_hash_arg "")
         if(LIBNEW_URL_HASH)
             set(_new_hash_arg URL_HASH "SHA256=${LIBNEW_URL_HASH}")
@@ -273,6 +408,7 @@ else()
         ExternalProject_Add(libnew_ep
             URL             "${LIBNEW_URL}"
             ${_new_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/libnew"
             CMAKE_ARGS      ${_new_cmake_args}
             BUILD_BYPRODUCTS "${_new_lib}"
             LOG_DOWNLOAD    ON
@@ -286,7 +422,6 @@ endif()
 
 unset(_new_lib)
 unset(_new_inc)
-unset(_new_hdr)
 ```
 
 2. Додати `include("${_ep_dir}/LibNew.cmake")` у `ExternalDeps.cmake` у правильному місці за залежностями.

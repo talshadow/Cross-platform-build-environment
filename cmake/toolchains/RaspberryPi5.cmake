@@ -5,8 +5,7 @@
 # CPU:  Cortex-A76 × 4 (ARMv8.2-A, 64-bit)
 # OS:   Raspberry Pi OS 64-bit / Ubuntu Server 24.04 arm64
 #
-# Пакети Ubuntu: gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-# Рекомендовано GCC 12+ для повної підтримки ARMv8.2-A.
+# Пакети Ubuntu: gcc-13-aarch64-linux-gnu g++-13-aarch64-linux-gnu
 #
 # Використання:
 #   cmake -B build -S . \
@@ -21,11 +20,37 @@ set(CMAKE_SYSTEM_PROCESSOR aarch64)
 set(RPI5_TOOLCHAIN_PREFIX "aarch64-linux-gnu"
     CACHE STRING "Префікс крос-компілятора для Raspberry Pi 5")
 
+set(RPI5_GCC_VERSION "13"
+    CACHE STRING "Версія GCC для крос-компіляції RPi 5 (13, 14, ...)")
+
 set(_TOOLCHAIN_PREFIX_VAR RPI5_TOOLCHAIN_PREFIX)
 include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")
-cross_toolchain_find_compiler(
-    "${RPI5_TOOLCHAIN_PREFIX}"
-    "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu")
+
+find_program(_RPI5_CC_VERSIONED
+    "${RPI5_TOOLCHAIN_PREFIX}-gcc-${RPI5_GCC_VERSION}")
+
+if(_RPI5_CC_VERSIONED)
+    set(CMAKE_C_COMPILER   "${RPI5_TOOLCHAIN_PREFIX}-gcc-${RPI5_GCC_VERSION}"
+        CACHE FILEPATH "C compiler" FORCE)
+    set(CMAKE_CXX_COMPILER "${RPI5_TOOLCHAIN_PREFIX}-g++-${RPI5_GCC_VERSION}"
+        CACHE FILEPATH "C++ compiler" FORCE)
+    find_program(_AR     "${RPI5_TOOLCHAIN_PREFIX}-ar")
+    find_program(_STRIP  "${RPI5_TOOLCHAIN_PREFIX}-strip")
+    find_program(_RANLIB "${RPI5_TOOLCHAIN_PREFIX}-ranlib")
+    if(_AR)     set(CMAKE_AR     "${_AR}"     CACHE FILEPATH "Archiver" FORCE) endif()
+    if(_STRIP)  set(CMAKE_STRIP  "${_STRIP}"  CACHE FILEPATH "Strip"    FORCE) endif()
+    if(_RANLIB) set(CMAKE_RANLIB "${_RANLIB}" CACHE FILEPATH "Ranlib"   FORCE) endif()
+    unset(_AR) unset(_STRIP) unset(_RANLIB)
+else()
+    message(WARNING
+        "[RaspberryPi5] gcc-${RPI5_GCC_VERSION} не знайдено, "
+        "використовується неверсований aarch64-linux-gnu-gcc. "
+        "Встановіть: sudo apt install gcc-${RPI5_GCC_VERSION}-aarch64-linux-gnu")
+    cross_toolchain_find_compiler(
+        "${RPI5_TOOLCHAIN_PREFIX}"
+        "gcc-${RPI5_GCC_VERSION}-aarch64-linux-gnu g++-${RPI5_GCC_VERSION}-aarch64-linux-gnu")
+endif()
+unset(_RPI5_CC_VERSIONED)
 
 # --- CPU-специфічні прапори -----------------------------------------------
 # -mcpu=cortex-a76  — Cortex-A76 (BCM2712), ARMv8.2-A

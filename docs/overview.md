@@ -173,6 +173,10 @@ base (hidden)
 │   inherits: base-cross
 │   toolchainFile: RaspberryPi4.cmake
 │
+├── rpi5-debug / rpi5-release
+│   inherits: base-cross
+│   toolchainFile: RaspberryPi5.cmake
+│
 └── yocto-debug / yocto-release
     inherits: base-cross
     toolchainFile: Yocto.cmake
@@ -283,7 +287,21 @@ target_link_libraries(my_app PRIVATE PNG::PNG JPEG::JPEG OpenSSL::SSL)
 cmake --preset rpi4-release -DUSE_SYSTEM_OPENSSL=ON -DRPI_SYSROOT=/srv/rpi4-sysroot
 ```
 
-Бібліотеки встановлюються у `build/External/<toolchain>/<BuildType>/`.
+Бібліотеки встановлюються у `~/build/SupportRaspberryPI/external/<toolchain>/<BuildType>/`.
+Кореневу директорію збірки можна змінити: `-DBUILD_ROOT=/mnt/nvme/proj`.
+
+### Структура директорій збірки
+
+```
+~/build/                              ← BUILD_ROOT (за замовч.)
+└── SupportRaspberryPI/
+    ├── external_sources/             ← архіви сорців (спільні для всіх toolchain)
+    ├── external/                     ← скомпільовані бібліотеки (per-toolchain)
+    │   ├── RaspberryPi4/Release/
+    │   └── Ubuntu2404/Debug/
+    ├── rpi4-release/                 ← preset build dirs
+    └── ubuntu2404-debug/
+```
 
 ### Режим SuperBuild
 

@@ -40,15 +40,21 @@ set(<LIBNAME>_URL_HASH ""  CACHE STRING "SHA256 хеш (порожньо = не 
 
 set(_lib "${EXTERNAL_INSTALL_PREFIX}/lib/lib<name>.so")
 set(_inc "${EXTERNAL_INSTALL_PREFIX}/include")
-set(_hdr "${EXTERNAL_INSTALL_PREFIX}/include/<name>.h")
 
 if(USE_SYSTEM_<LIBNAME>)
     find_package(<CMakeFindName> REQUIRED)
     message(STATUS "[<LibName>] Системна: ${<Var>_LIBRARIES}")
+
 else()
-    if(EXISTS "${_lib}" AND EXISTS "${_hdr}")
-        message(STATUS "[<LibName>] Знайдено у ${EXTERNAL_INSTALL_PREFIX}")
-        ep_imported_library(<Namespace>::<Name> "${_lib}" "${_inc}")
+    # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
+    find_package(<CMakeFindName> QUIET
+        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        NO_DEFAULT_PATH)
+
+    if(<CMakeFindName>_FOUND)
+        message(STATUS "[<LibName>] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
+        # target вже створено find_package — нічого більше не потрібно
+
     else()
         message(STATUS "[<LibName>] Буде зібрано з джерел (${<LIBNAME>_VERSION})")
 
@@ -59,6 +65,12 @@ else()
 
         ep_cmake_args(_cmake_args
             -DSOME_OPTION=ON
+            # КРИТИЧНО: якщо бібліотека залежить від інших external libs —
+            # передати явні шляхи І вимкнути системний пошук:
+            # -DFOO_LIBRARY=${EXTERNAL_INSTALL_PREFIX}/lib/libfoo.so
+            # -DFOO_INCLUDE_DIR=${EXTERNAL_INSTALL_PREFIX}/include
+            # -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+            # -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
         )
 
         # Залежності від інших EP (якщо є)
@@ -67,9 +79,10 @@ else()
         ExternalProject_Add(<libname>_ep
             URL             "${<LIBNAME>_URL}"
             ${_hash_arg}
+            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/<libname>"
             CMAKE_ARGS      ${_cmake_args}
+            DEPENDS         ${_ep_deps}
             BUILD_BYPRODUCTS "${_lib}"
-            ${_ep_deps}
             LOG_DOWNLOAD    ON
             LOG_BUILD       ON
             LOG_INSTALL     ON
@@ -82,7 +95,6 @@ endif()
 
 unset(_lib)
 unset(_inc)
-unset(_hdr)
 ```
 
 **Особливі випадки:**
@@ -95,8 +107,10 @@ unset(_hdr)
 Перевір чи нова бібліотека залежить від вже існуючих:
 - libpng_ep, libjpeg_ep, libtiff_ep, openssl_ep, boost_ep, opencv_ep
 
-Якщо залежить — додай `_ep_collect_deps(_ep_deps ...)` і `${_ep_deps}` в `ExternalProject_Add`.
-Також передай шляхи до залежних бібліотек через CMake args якщо потрібно.
+Якщо залежить:
+1. Додай `_ep_collect_deps(_ep_deps ...)` і `DEPENDS ${_ep_deps}` в `ExternalProject_Add`
+2. **КРИТИЧНО**: передай явні шляхи до залежних бібліотек через CMake args
+3. **КРИТИЧНО**: вимкни системний пошук цих залежностей (`-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF`)
 
 ### 3. Додай include до `cmake/external/ExternalDeps.cmake`
 
@@ -118,12 +132,23 @@ include("${_ep_dir}/<LibName>.cmake")
 
 ## Важливі деталі архітектури
 
-- **EXTERNAL_INSTALL_PREFIX** за замовченням: `../External/<toolchain>/<BuildType>` відносно CMAKE_BINARY_DIR
-  - Де `<toolchain>` — ім'я файлу toolchain без .cmake (або `native`)
-  - Приклад: `build/External/RaspberryPi4/Release/`
+- **EXTERNAL_INSTALL_PREFIX** за замовченням: `<BUILD_ROOT>/<project>/external/<toolchain>/<BuildType>`
+  - `BUILD_ROOT` за замовч. `~/build`, змінюється через `-DBUILD_ROOT=<path>`
+  - `<toolchain>` — ім'я файлу toolchain без .cmake (або `native`)
+  - Приклад: `~/build/SupportRaspberryPI/external/RaspberryPi4/Release/`
+- **EP_SOURCES_DIR**: `<BUILD_ROOT>/<project>/external_sources/` — архіви завантажуються один раз для всіх toolchain. Завжди передавай `DOWNLOAD_DIR "${EP_SOURCES_DIR}/<libname>"`
+- **Алгоритм кешу**: `find_package(QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)` → якщо знайдено — не викликати ExternalProject_Add
 - **Крос-компіляція**: `ep_cmake_args()` автоматично передає CMAKE_TOOLCHAIN_FILE, CMAKE_C/CXX_COMPILER, CMAKE_SYSROOT, RPI_SYSROOT, YOCTO_SDK_SYSROOT, CMAKE_AR/RANLIB/STRIP
 - **RPATH**: `$ORIGIN/../lib` через USE_ORIGIN_RPATH (передається ep_cmake_args)
 - **Toolchain завантажується двічі** в CMake — не використовуй FATAL_ERROR без перевірки CMAKE_CROSSCOMPILING
+
+## КРИТИЧНА ВИМОГА: ізоляція залежностей
+
+Якщо бібліотека залежить від інших external libs — **обов'язково**:
+1. Передати явні шляхи: `-DFOO_LIBRARY=...`, `-DFOO_INCLUDE_DIR=...`
+2. Вимкнути системний пошук: `-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF`
+
+Порушення → мовчазне лінкування проти системної бібліотеки = критична помилка при крос-компіляції.
 
 ## Утиліти (Common.cmake)
 
@@ -133,7 +158,7 @@ ep_imported_library(target lib inc)        # SHARED IMPORTED
 ep_imported_interface(target inc)          # INTERFACE IMPORTED (header-only)
 ep_imported_library_from_ep(t ep lib inc)  # SHARED + add_dependencies
 ep_imported_interface_from_ep(t ep inc)    # INTERFACE + add_dependencies
-_ep_collect_deps(out_var ep1 ep2...)       # DEPENDS arg для ExternalProject_Add
+_ep_collect_deps(out_var ep1 ep2...)       # список існуючих EP-цілей для DEPENDS
 ```
 
 ## Перевірка
@@ -142,3 +167,5 @@ _ep_collect_deps(out_var ep1 ep2...)       # DEPENDS arg для ExternalProject_
 1. `grep -r "<LibName>" cmake/external/ExternalDeps.cmake` — є include?
 2. `grep -r "<libname>_ep" cmake/SuperBuild.cmake` — є в списку?
 3. Чи правильний порядок includes в ExternalDeps.cmake (залежності раніше залежних)?
+4. Чи передані явні шляхи до всіх external залежностей?
+5. Чи вимкнений системний пошук для цих залежностей?

@@ -24,6 +24,48 @@
     },
 
     {
+      "name": "native-debug",
+      "displayName": "Native — Debug",
+      "description": "Нативна збірка системним компілятором, режим Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "native-release",
+      "displayName": "Native — Release",
+      "description": "Нативна збірка системним компілятором, режим Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON"
+      }
+    },
+
+    {
+      "name": "native-relwithdebinfo",
+      "displayName": "Native — RelWithDebInfo",
+      "description": "Нативна збірка системним компілятором, Release з debug символами",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "native-asan",
+      "displayName": "Native — Debug + ASAN + UBSAN",
+      "description": "Нативна збірка системним компілятором з санітайзерами",
+      "inherits": "native-debug",
+      "cacheVariables": {
+        "ENABLE_ASAN": "ON",
+        "ENABLE_UBSAN": "ON"
+      }
+    },
+
+    {
       "name": "ubuntu2004-debug",
       "displayName": "Ubuntu 20.04 — Debug",
       "description": "Нативна збірка GCC 10, Ubuntu 20.04, режим Debug",
@@ -81,72 +123,6 @@
       "cacheVariables": {
         "ENABLE_ASAN": "ON",
         "ENABLE_UBSAN": "ON"
-      }
-    },
-
-    {
-      "name": "rpi1-debug",
-      "displayName": "Raspberry Pi 1 / Zero — Debug",
-      "description": "Крос-компіляція для BCM2835 (ARMv6), режим Debug",
-      "inherits": "base-cross",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi1.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-
-    {
-      "name": "rpi1-release",
-      "displayName": "Raspberry Pi 1 / Zero — Release",
-      "description": "Крос-компіляція для BCM2835 (ARMv6), режим Release",
-      "inherits": "base-cross",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi1.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-
-    {
-      "name": "rpi2-debug",
-      "displayName": "Raspberry Pi 2 — Debug",
-      "description": "Крос-компіляція для BCM2836 (Cortex-A7), режим Debug",
-      "inherits": "base-cross",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi2.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-
-    {
-      "name": "rpi2-release",
-      "displayName": "Raspberry Pi 2 — Release",
-      "description": "Крос-компіляція для BCM2836 (Cortex-A7), режим Release",
-      "inherits": "base-cross",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi2.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-
-    {
-      "name": "rpi3-debug",
-      "displayName": "Raspberry Pi 3 / Zero 2W — Debug",
-      "description": "Крос-компіляція для BCM2837 (Cortex-A53, AArch64), режим Debug",
-      "inherits": "base-cross",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi3.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-
-    {
-      "name": "rpi3-release",
-      "displayName": "Raspberry Pi 3 / Zero 2W — Release",
-      "description": "Крос-компіляція для BCM2837 (Cortex-A53, AArch64), режим Release",
-      "inherits": "base-cross",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/RaspberryPi3.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
       }
     },
 
@@ -218,17 +194,15 @@
   ],
 
   "buildPresets": [
+    { "name": "native-debug",          "configurePreset": "native-debug",          "jobs": 0 },
+    { "name": "native-release",        "configurePreset": "native-release",        "jobs": 0 },
+    { "name": "native-relwithdebinfo", "configurePreset": "native-relwithdebinfo", "jobs": 0 },
+    { "name": "native-asan",           "configurePreset": "native-asan",           "jobs": 0 },
     { "name": "ubuntu2004-debug",   "configurePreset": "ubuntu2004-debug",   "jobs": 0 },
     { "name": "ubuntu2004-release", "configurePreset": "ubuntu2004-release", "jobs": 0 },
     { "name": "ubuntu2404-debug",   "configurePreset": "ubuntu2404-debug",   "jobs": 0 },
     { "name": "ubuntu2404-release", "configurePreset": "ubuntu2404-release", "jobs": 0 },
     { "name": "ubuntu2404-asan",    "configurePreset": "ubuntu2404-asan",    "jobs": 0 },
-    { "name": "rpi1-debug",         "configurePreset": "rpi1-debug",         "jobs": 0 },
-    { "name": "rpi1-release",       "configurePreset": "rpi1-release",       "jobs": 0 },
-    { "name": "rpi2-debug",         "configurePreset": "rpi2-debug",         "jobs": 0 },
-    { "name": "rpi2-release",       "configurePreset": "rpi2-release",       "jobs": 0 },
-    { "name": "rpi3-debug",         "configurePreset": "rpi3-debug",         "jobs": 0 },
-    { "name": "rpi3-release",       "configurePreset": "rpi3-release",       "jobs": 0 },
     { "name": "rpi4-debug",         "configurePreset": "rpi4-debug",         "jobs": 0 },
     { "name": "rpi4-release",       "configurePreset": "rpi4-release",       "jobs": 0 },
     { "name": "rpi5-debug",         "configurePreset": "rpi5-debug",         "jobs": 0 },
@@ -238,6 +212,18 @@
   ],
 
   "testPresets": [
+    {
+      "name": "native-debug",
+      "configurePreset": "native-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "native-asan",
+      "configurePreset": "native-asan",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 1 }
+    },
     {
       "name": "ubuntu2004-debug",
       "configurePreset": "ubuntu2004-debug",

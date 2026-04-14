@@ -71,15 +71,14 @@ tests/              — тести GTest (CMakeLists.txt-заглушка)
 
 | Пресет | Платформа | Тип |
 |---|---|---|
+| `native-debug/release/relwithdebinfo` | системний компілятор | нативний |
+| `native-asan` | системний компілятор + ASAN + UBSAN | нативний |
 | `ubuntu2004-debug/release` | Ubuntu 20.04, GCC 10 | нативний |
 | `ubuntu2404-debug/release` | Ubuntu 24.04, GCC 13 | нативний |
 | `ubuntu2404-asan` | Ubuntu 24.04 + ASAN + UBSAN | нативний |
-| `rpi1-debug/release` | Pi 1/Zero, ARMv6 | крос |
-| `rpi2-debug/release` | Pi 2, Cortex-A7 | крос |
-| `rpi3-debug/release` | Pi 3/Zero2W, Cortex-A53 | крос |
-| `rpi4-debug/release` | Pi 4/400/CM4, Cortex-A72 | крос |
-| `rpi5-debug/release` | Pi 5, Cortex-A76 | крос |
-| `yocto-debug/release` | Yocto (будь-яка arch) | крос |
+| `rpi4-debug/release/relwithdebinfo` | Pi 4/400/CM4, Cortex-A72 | крос |
+| `rpi5-debug/release/relwithdebinfo` | Pi 5, Cortex-A76 | крос |
+| `yocto-debug/release/relwithdebinfo` | Yocto (будь-яка arch) | крос |
 
 ## Ключові CMake змінні
 
@@ -93,7 +92,9 @@ tests/              — тести GTest (CMakeLists.txt-заглушка)
 | `ENABLE_ASAN/UBSAN/TSAN` | CMakeLists.txt | Санітайзери |
 | `ENABLE_LTO` | CMakeLists.txt | Link-Time Optimization |
 | `SUPERBUILD` | CMakeLists.txt | Увімкнути SuperBuild режим |
+| `BUILD_ROOT` | external/Common.cmake | Коренева директорія збірки (за замовч. `~/build`) |
 | `EXTERNAL_INSTALL_PREFIX` | external/Common.cmake | Префікс встановлення сторонніх бібліотек |
+| `EP_SOURCES_DIR` | external/Common.cmake | Директорія кешу завантажених архівів сорців |
 | `USE_SYSTEM_<LIB>` | external/*.cmake | Використати системну бібліотеку замість збірки |
 | `USE_ORIGIN_RPATH` | external/Common.cmake | Вбудовувати $ORIGIN RPATH (ON за замовч.) |
 
@@ -114,6 +115,43 @@ git_get_version(PROJECT_VERSION)    # з git тегу, FALLBACK="0.0.0"
 git_get_commit_hash(GIT_HASH)       # скорочений хеш HEAD (7 символів)
 ```
 
+## Алгоритм Lib*.cmake (USE_SYSTEM=OFF)
+
+```
+find_package(Foo QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+├── Знайдено → target готовий, ExternalProject_Add НЕ викликається
+└── Не знайдено → ExternalProject_Add(...) + ep_imported_library_from_ep(...)
+```
+
+`NO_DEFAULT_PATH` — шукати тільки в наших артефактах, не в системі.
+`QUIET` — не падати якщо не знайдено (нормально при першій збірці).
+
+## КРИТИЧНА ВИМОГА: ізоляція залежностей ExternalProject
+
+**Кожна бібліотека при збірці повинна використовувати ВИКЛЮЧНО наші артефакти
+з `EXTERNAL_INSTALL_PREFIX` — системні бібліотеки повністю виключені.**
+
+Для кожної залежності між бібліотеками обов'язково:
+
+1. **Передати явні шляхи** до наших артефактів:
+```cmake
+-DJPEG_LIBRARY=${EXTERNAL_INSTALL_PREFIX}/lib/libjpeg.so
+-DJPEG_INCLUDE_DIR=${EXTERNAL_INSTALL_PREFIX}/include
+```
+
+2. **Явно вимкнути системний пошук** цих залежностей:
+```cmake
+-DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+-DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
+# або бібліотечно-специфічні прапори:
+-DWITH_JPEG=ON -DBUILD_JPEG=OFF   # використовувати наш, не збирати bundled
+```
+
+3. **Порядок збірки** забезпечувати через `DEPENDS` у `ExternalProject_Add`.
+
+Порушення цієї вимоги призводить до того що бібліотека мовчки лінкується
+проти системної версії — що є критичною помилкою при крос-компіляції.
+
 ## Сторонні бібліотеки
 
 ```cmake
@@ -128,6 +166,21 @@ target_link_libraries(my_app PRIVATE PNG::PNG JPEG::JPEG OpenSSL::SSL)
 `USE_SYSTEM_OPENSSL`, `USE_SYSTEM_BOOST`, `USE_SYSTEM_OPENCV` (за замовч. `OFF` — збирати з джерел).
 
 SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проєкт як окремі ExternalProject.
+
+## Структура директорій збірки
+
+```
+~/build/                         ← BUILD_ROOT (за замовч. ~/build)
+└── SupportRaspberryPI/
+    ├── external_sources/        ← архіви сорців (спільні для всіх toolchain)
+    ├── external/                ← скомпільовані бібліотеки (per-toolchain)
+    │   ├── RaspberryPi4/Release/
+    │   └── Ubuntu2404/Debug/
+    ├── rpi4-release/
+    └── ubuntu2404-debug/
+```
+
+`-DBUILD_ROOT=/mnt/nvme/proj` — перевизначає кореневу директорію збірки.
 
 ## Специфікації
 
