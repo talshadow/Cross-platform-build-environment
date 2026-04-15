@@ -51,6 +51,7 @@ else()
             -DPHYSFS_BUILD_SHARED=ON
             -DPHYSFS_BUILD_TEST=OFF
             -DPHYSFS_BUILD_DOCS=OFF
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         )
 
         ExternalProject_Add(physfs_ep

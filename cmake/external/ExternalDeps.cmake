@@ -11,7 +11,7 @@
 # LibEvent    <- OpenSSL
 # LibPisp     <- LibCamera, Boost
 # RpiCamApps  <- LibCamera, Boost
-# AirSim      <- Eigen3
+# AirSim      <- Eigen3, Rpclib
 # PhySysCpp   <- PhySys
 #
 # Кожна бібліотека управляється окремим cmake-файлом у цій директорії.
@@ -34,7 +34,7 @@ include("${_ep_dir}/BoostDI.cmake")
 include("${_ep_dir}/BoostSML.cmake")
 include("${_ep_dir}/EasyProfiler.cmake")
 include("${_ep_dir}/Ncnn.cmake")
-include("${_ep_dir}/LibIr.cmake")
+# include("${_ep_dir}/LibIr.cmake")
 
 # ── Залежить від LibJpeg + LibPng ───────────────────────────────────────────
 include("${_ep_dir}/LibTiff.cmake")
@@ -49,15 +49,18 @@ include("${_ep_dir}/GeographicLib.cmake")
 include("${_ep_dir}/LibEvent.cmake")
 
 # ── Незалежна: камера (зазвичай береться з sysroot) ─────────────────────────
-include("${_ep_dir}/LibCamera.cmake")
+# include("${_ep_dir}/LibCamera.cmake")
 
 # ── Залежить від LibCamera + Boost (тільки RPi 5) ───────────────────────────
-include("${_ep_dir}/LibPisp.cmake")
+# include("${_ep_dir}/LibPisp.cmake")
 
 # ── Залежить від LibCamera + Boost ──────────────────────────────────────────
-include("${_ep_dir}/RpiCamApps.cmake")
+# include("${_ep_dir}/RpiCamApps.cmake")
 
-# ── Залежить від Eigen3 ──────────────────────────────────────────────────────
+# ── Незалежна: rpclib (msgpack-RPC, потрібна для AirSim) ────────────────────
+include("${_ep_dir}/Rpclib.cmake")
+
+# ── Залежить від Eigen3 + Rpclib ─────────────────────────────────────────────
 include("${_ep_dir}/AirSim.cmake")
 
 # ── Незалежні: прикладні бібліотеки ─────────────────────────────────────────

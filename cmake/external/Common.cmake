@@ -152,6 +152,7 @@ function(ep_cmake_args out_var)
     set(_args
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_PREFIX}
+        -DCMAKE_INSTALL_LIBDIR=lib
         -DBUILD_SHARED_LIBS=ON
     )
 
@@ -325,8 +326,12 @@ function(_meson_generate_cross_file out_var)
     # Бінарні утиліти зі змінних toolchain
     set(_mc_ar    "${CMAKE_AR}")
     set(_mc_strip "${CMAKE_STRIP}")
-    if(NOT _mc_ar)    set(_mc_ar    "ar")    endif()
-    if(NOT _mc_strip) set(_mc_strip "strip") endif()
+    if(NOT _mc_ar)
+        set(_mc_ar "ar")
+    endif()
+    if(NOT _mc_strip)
+        set(_mc_strip "strip")
+    endif()
 
     # Рядки sysroot та pkg-config для секції [properties]
     set(_mc_sysroot_line    "")

@@ -49,6 +49,7 @@ else()
         ep_cmake_args(_ep_cmake_args
             -DEASY_PROFILER_NO_GUI=ON
             -DEASY_PROFILER_NO_SAMPLES=ON
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         )
 
         ExternalProject_Add(easyprofiler_ep

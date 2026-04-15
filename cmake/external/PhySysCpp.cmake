@@ -20,11 +20,11 @@ option(USE_SYSTEM_PHYSYSCPP
     "Використовувати системну physfs-hpp замість збірки з джерел"
     OFF)
 
-set(PHYSYSCPP_VERSION "v0.7.0"
+set(PHYSYSCPP_VERSION "master"
     CACHE STRING "Версія physfs-hpp для збірки з джерел")
 
 set(PHYSYSCPP_GIT_REPO
-    "https://github.com/Lectem/physfs-hpp.git"
+    "https://github.com/Ybalrid/physfs-hpp.git"
     CACHE STRING "Git репозиторій physfs-hpp")
 
 # ---------------------------------------------------------------------------
@@ -56,23 +56,23 @@ else()
         # physfs-hpp потребує PhysicsFS для свого CMake (знаходить headers)
         _ep_collect_deps(_physfscpp_ep_deps physfs_ep)
 
-        ep_cmake_args(_physfscpp_cmake_args
-            -DPHYSFS_LOCATION=${EXTERNAL_INSTALL_PREFIX}
-            -DPhysicsFS_ROOT=${EXTERNAL_INSTALL_PREFIX}
-            -DPHYSFSPP_BUILD_TESTS=OFF
-        )
-
+        # physfs-hpp — header-only, cmake не потрібен.
+        # Просто копіюємо physfs.hpp після клонування.
         ExternalProject_Add(physfscpp_ep
-            GIT_REPOSITORY  "${PHYSYSCPP_GIT_REPO}"
-            GIT_TAG         "${PHYSYSCPP_VERSION}"
-            GIT_SHALLOW     ON
-            SOURCE_DIR      "${EP_SOURCES_DIR}/physfscpp"
-            CMAKE_ARGS      ${_physfscpp_cmake_args}
-            DEPENDS         ${_physfscpp_ep_deps}
-            BUILD_BYPRODUCTS "${_physfscpp_inc}/physfs.hpp"
-            LOG_DOWNLOAD    ON
-            LOG_BUILD       ON
-            LOG_INSTALL     ON
+            GIT_REPOSITORY    "${PHYSYSCPP_GIT_REPO}"
+            GIT_TAG           "${PHYSYSCPP_VERSION}"
+            GIT_SHALLOW       ON
+            SOURCE_DIR        "${EP_SOURCES_DIR}/physfscpp"
+            DEPENDS           ${_physfscpp_ep_deps}
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND     ""
+            INSTALL_COMMAND
+                ${CMAKE_COMMAND} -E copy
+                    "${EP_SOURCES_DIR}/physfscpp/include/physfs.hpp"
+                    "${EXTERNAL_INSTALL_PREFIX}/include/physfs.hpp"
+            BUILD_BYPRODUCTS  "${_physfscpp_inc}/physfs.hpp"
+            LOG_DOWNLOAD      ON
+            LOG_INSTALL       ON
         )
 
         ep_imported_interface_from_ep(

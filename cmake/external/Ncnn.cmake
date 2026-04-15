@@ -60,6 +60,7 @@ else()
             # Shared library
             -DNCNN_SHARED_LIB=ON
             -DNCNN_ENABLE_LTO=OFF
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         )
 
         ExternalProject_Add(ncnn_ep

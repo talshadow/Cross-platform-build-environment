@@ -81,6 +81,7 @@ else()
             -DEVENT__DISABLE_BENCHMARK=ON
             -DEVENT__DISABLE_REGRESS=ON
             -DEVENT__LIBRARY_TYPE=SHARED
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
             ${_libevent_ssl_args}
         )
 
@@ -98,6 +99,7 @@ else()
                 "${_libevent_core}"
                 "${_libevent_extra}"
             LOG_DOWNLOAD    ON
+            LOG_CONFIGURE   ON
             LOG_BUILD       ON
             LOG_INSTALL     ON
         )

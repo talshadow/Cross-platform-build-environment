@@ -181,8 +181,9 @@ else()
             -DWITH_CUDA=OFF
             -DWITH_OPENCL=OFF
             -DWITH_IPP=OFF
-            -DWITH_TBB=OFF
+            -DWITH_TBB=ON
             -DOPENCV_GENERATE_PKGCONFIG=ON
+            -DWITH_FFMPEG=OFF
             ${_ocv_contrib_arg}
             ${_ocv_dep_args}
         )
@@ -207,6 +208,11 @@ else()
             GIT_TAG          "${OPENCV_VERSION}"
             GIT_SHALLOW      ON
             SOURCE_DIR       "${EP_SOURCES_DIR}/opencv"
+            # Патч: OpenCVGenPkgconfig.cmake використовує cmake_minimum_required < 3.5,
+            # що несумісно з CMake >= 3.28. Виправляємо в джерелах.
+            PATCH_COMMAND
+                sed -i "s/cmake_minimum_required(VERSION 2\\.[0-9][0-9.]*/cmake_minimum_required(VERSION 3.5/"
+                    "${EP_SOURCES_DIR}/opencv/cmake/OpenCVGenPkgconfig.cmake"
             CMAKE_ARGS       ${_ocv_cmake_args}
             BUILD_BYPRODUCTS ${_ocv_byproducts}
             DEPENDS          ${_ocv_ep_depends}

@@ -54,6 +54,7 @@ else()
         ep_cmake_args(_boostdi_cmake_args
             -DBOOST_DI_OPT_BUILD_TESTS=OFF
             -DBOOST_DI_OPT_BUILD_EXAMPLES=OFF
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         )
 
         ExternalProject_Add(boostdi_ep
@@ -62,9 +63,16 @@ else()
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/boostdi"
             CMAKE_ARGS      ${_boostdi_cmake_args}
+            BUILD_COMMAND   ""
+            INSTALL_COMMAND
+                ${CMAKE_COMMAND} -E copy_directory
+                    "${EP_SOURCES_DIR}/boostdi/include"
+                    "${EXTERNAL_INSTALL_PREFIX}/include"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${EP_SOURCES_DIR}/boostdi/extension/include"
+                    "${EXTERNAL_INSTALL_PREFIX}/include"
             BUILD_BYPRODUCTS "${_boostdi_inc}/boost/di.hpp"
             LOG_DOWNLOAD    ON
-            LOG_BUILD       ON
             LOG_INSTALL     ON
         )
 
