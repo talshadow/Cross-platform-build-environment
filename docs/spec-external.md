@@ -70,12 +70,11 @@ option(USE_SYSTEM_LIBFOO "Використовувати системний libf
 
 При крос-компіляції з sysroot `find_package` автоматично шукає в sysroot через `CMAKE_FIND_ROOT_PATH`.
 
-### 3. Надати кеш-змінні версії та URL
+### 3. Надати кеш-змінні версії та репозиторію
 
 ```cmake
-set(LIBFOO_VERSION "X.Y.Z" CACHE STRING "Версія для збірки")
-set(LIBFOO_URL     "https://..." CACHE STRING "URL архіву")
-set(LIBFOO_URL_HASH ""          CACHE STRING "SHA256 хеш (порожньо = не перевіряти)")
+set(LIBFOO_VERSION  "X.Y.Z" CACHE STRING "Версія для збірки (git тег)")
+set(LIBFOO_GIT_REPO "https://github.com/foo/libfoo.git" CACHE STRING "Git репозиторій")
 ```
 
 ### 4. КРИТИЧНО: ізолювати залежності від системних бібліотек
@@ -138,13 +137,15 @@ else()
         ep_cmake_args(_foo_cmake_args -DFOO_SHARED=ON -DFOO_TESTS=OFF)
 
         ExternalProject_Add(libfoo_ep
-            URL          "${LIBFOO_URL}"
-            DOWNLOAD_DIR "${EP_SOURCES_DIR}/libfoo"
-            CMAKE_ARGS   ${_foo_cmake_args}
+            GIT_REPOSITORY  "${LIBFOO_GIT_REPO}"
+            GIT_TAG         "v${LIBFOO_VERSION}"
+            GIT_SHALLOW     ON
+            SOURCE_DIR      "${EP_SOURCES_DIR}/libfoo"
+            CMAKE_ARGS      ${_foo_cmake_args}
             BUILD_BYPRODUCTS "${_foo_lib}"
-            LOG_DOWNLOAD ON
-            LOG_BUILD    ON
-            LOG_INSTALL  ON
+            LOG_DOWNLOAD    ON
+            LOG_BUILD       ON
+            LOG_INSTALL     ON
         )
 
         ep_imported_library_from_ep(Foo::Foo libfoo_ep "${_foo_lib}" "${_foo_inc}")
@@ -251,19 +252,19 @@ cmake --preset rpi4-release -DBUILD_ROOT=/mnt/nvme/proj
 
 ### EP_SOURCES_DIR
 
-Спільна директорія для кешування заван��ажених архівів сорців.
+Спільна директорія git-клонів сорців для всіх toolchain.
 
 ```
 <BUILD_ROOT>/<project_name>/external_sources/
 ```
 
-**Ключова властивість:** архів `libpng-1.6.43.tar.gz` завантажується **один раз**
-і повторно використовується при збірці під будь-який toolchain чи build type.
-Вилучення та компіляція — окремі для кожної конфігурації.
+**Ключова властивість:** репозиторій клонується **один раз** і повторно
+використовується при збірці під будь-який toolchain чи build type.
+Компіляція та встановлення — окремі для кожної конфігурації.
 
 Можна перевизначити через `-DEP_SOURCES_DIR=<path>`.
 
-Кожен `ExternalProject_Add` передає `DOWNLOAD_DIR "${EP_SOURCES_DIR}/<libname>"`.
+Кожен `ExternalProject_Add` передає `SOURCE_DIR "${EP_SOURCES_DIR}/<libname>"`.
 Шаблон іменування підтеки — ім'я бібліотеки в нижньому регістрі без версії.
 
 ---
@@ -413,9 +414,8 @@ cmake --build build/rpi4-release
 
 option(USE_SYSTEM_LIBNEW "Використовувати системний libnew" OFF)
 
-set(LIBNEW_VERSION  "X.Y.Z" CACHE STRING "Версія libnew")
-set(LIBNEW_URL      "https://..." CACHE STRING "URL архіву")
-set(LIBNEW_URL_HASH "" CACHE STRING "SHA256 хеш (порожньо = не перевіряти)")
+set(LIBNEW_VERSION  "X.Y.Z" CACHE STRING "Версія libnew (git тег)")
+set(LIBNEW_GIT_REPO "https://github.com/owner/libnew.git" CACHE STRING "Git репозиторій")
 
 set(_new_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libnew.so")
 set(_new_inc "${EXTERNAL_INSTALL_PREFIX}/include")
@@ -435,20 +435,16 @@ else()
     else()
         message(STATUS "[LibNew] Буде зібрано з джерел (версія ${LIBNEW_VERSION})")
 
-        set(_new_hash_arg "")
-        if(LIBNEW_URL_HASH)
-            set(_new_hash_arg URL_HASH "SHA256=${LIBNEW_URL_HASH}")
-        endif()
-
         ep_cmake_args(_new_cmake_args
             -DLIBNEW_BUILD_SHARED=ON
             -DLIBNEW_BUILD_TESTS=OFF
         )
 
         ExternalProject_Add(libnew_ep
-            URL             "${LIBNEW_URL}"
-            ${_new_hash_arg}
-            DOWNLOAD_DIR    "${EP_SOURCES_DIR}/libnew"
+            GIT_REPOSITORY  "${LIBNEW_GIT_REPO}"
+            GIT_TAG         "v${LIBNEW_VERSION}"
+            GIT_SHALLOW     ON
+            SOURCE_DIR      "${EP_SOURCES_DIR}/libnew"
             CMAKE_ARGS      ${_new_cmake_args}
             BUILD_BYPRODUCTS "${_new_lib}"
             LOG_DOWNLOAD    ON

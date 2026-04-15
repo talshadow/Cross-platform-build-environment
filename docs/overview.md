@@ -318,7 +318,7 @@ cmake --preset rpi4-release -DUSE_SYSTEM_OPENSSL=ON -DRPI_SYSROOT=/srv/rpi4-sysr
 ```
 ~/build/                              ← BUILD_ROOT (за замовч.)
 └── SupportRaspberryPI/
-    ├── external_sources/             ← архіви сорців (спільні для всіх toolchain)
+    ├── external_sources/             ← git-клони сорців (спільні для всіх toolchain)
     ├── external/                     ← скомпільовані бібліотеки (per-toolchain)
     │   ├── RaspberryPi4/Release/
     │   └── Ubuntu2404/Debug/

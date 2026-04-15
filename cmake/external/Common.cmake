@@ -78,14 +78,14 @@ endif()
 file(MAKE_DIRECTORY "${EXTERNAL_INSTALL_PREFIX}")
 message(STATUS "[ExternalDeps] Install prefix: ${EXTERNAL_INSTALL_PREFIX}")
 
-# EP_SOURCES_DIR — спільна директорія архівів сорців для всіх toolchain
+# EP_SOURCES_DIR — спільна директорія git-клонів сорців для всіх toolchain
 if(NOT DEFINED EP_SOURCES_DIR OR EP_SOURCES_DIR STREQUAL "")
     set(EP_SOURCES_DIR
         "${BUILD_ROOT}/${CMAKE_PROJECT_NAME}/external_sources"
-        CACHE PATH "Директорія кешу завантажених архівів сорців")
+        CACHE PATH "Директорія git-клонів сорців (спільна для всіх toolchain)")
 endif()
 file(MAKE_DIRECTORY "${EP_SOURCES_DIR}")
-message(STATUS "[ExternalDeps] Sources cache: ${EP_SOURCES_DIR}")
+message(STATUS "[ExternalDeps] Sources dir: ${EP_SOURCES_DIR}")
 
 # Додаємо до CMAKE_PREFIX_PATH і CMAKE_FIND_ROOT_PATH щоб find_package
 # знаходив вже встановлені бібліотеки навіть у крос-режимі (ONLY mode).

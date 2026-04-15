@@ -186,7 +186,7 @@ SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проє
 ```
 ~/build/                         ← BUILD_ROOT (за замовч. ~/build)
 └── SupportRaspberryPI/
-    ├── external_sources/        ← архіви сорців (спільні для всіх toolchain)
+    ├── external_sources/        ← git-клони сорців (спільні для всіх toolchain)
     ├── external/                ← скомпільовані бібліотеки (per-toolchain)
     │   ├── RaspberryPi4/Release/
     │   └── Ubuntu2404/Debug/
