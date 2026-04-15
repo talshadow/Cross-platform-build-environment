@@ -89,16 +89,15 @@ set(LIBFOO_GIT_REPO "https://github.com/foo/libfoo.git" CACHE STRING "Git реп
 -DPNG_PNG_INCLUDE_DIR=${EXTERNAL_INSTALL_PREFIX}/include
 ```
 
-**б) Явно вимкнути системний пошук цих залежностей:**
+**б) Бібліотечно-специфічні прапори ізоляції (де підтримуються):**
 ```cmake
-# Глобально — вимкнути пошук у системних шляхах:
--DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
--DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
-
-# Або бібліотечно-специфічні прапори (де підтримуються):
 -DWITH_JPEG=ON   # використовувати наш libjpeg
 -DBUILD_JPEG=OFF # НЕ збирати bundled копію
 ```
+
+Глобальний пріоритет пошуку (`find_library`, `find_package`, `find_program` тощо)
+налаштовується автоматично через `ep_cmake_args()` → `ep_find_scope()`.
+Вручну вказувати `CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH` **не потрібно**.
 
 **Наслідок порушення:** бібліотека мовчки лінкується проти системної версії —
 критична помилка при крос-компіляції (ABI несумісність, неправильна архітектура).
@@ -160,8 +159,12 @@ endif()
 
 ### 6. Використовувати ep_cmake_args() для аргументів збірки
 
-`ep_cmake_args()` автоматично передає toolchain, sysroot, компілятори, RPATH.
+`ep_cmake_args()` автоматично передає toolchain, sysroot, компілятори, RPATH
+та пріоритет пошуку бібліотек через `ep_find_scope()`.
 Додаткові аргументи передаються через `ARGN`.
+
+Якщо бібліотека потребує нестандартного scope пошуку — викликати `ep_find_scope()`
+явно і передати окремо від `ep_cmake_args()`.
 
 ### 7. Прибирати локальні змінні
 
@@ -277,6 +280,7 @@ cmake --preset rpi4-release -DBUILD_ROOT=/mnt/nvme/proj
 - `-DCMAKE_BUILD_TYPE`
 - `-DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_PREFIX}`
 - `-DBUILD_SHARED_LIBS=ON`
+- результат `ep_find_scope()` — пріоритет пошуку бібліотек
 - `-DCMAKE_TOOLCHAIN_FILE` (якщо задано)
 - `-DCMAKE_C_COMPILER`, `-DCMAKE_CXX_COMPILER`
 - `-DCMAKE_SYSROOT`, `-DRPI_SYSROOT`, `-DYOCTO_SDK_SYSROOT` (якщо задано)
@@ -284,6 +288,31 @@ cmake --preset rpi4-release -DBUILD_ROOT=/mnt/nvme/proj
 - `-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib` (якщо `USE_ORIGIN_RPATH=ON`)
 
 Додаткові аргументи передаються через `ARGN`.
+
+---
+
+### ep_find_scope(out_var)
+
+Повертає `CMAKE_ARGS` для пріоритету пошуку в ExternalProject суб-збірках.
+Охоплює `find_library()`, `find_path()`, `find_package()`, `find_program()`.
+
+| Умова | Пріоритет |
+|---|---|
+| З sysroot (крос) | `prefix → sysroot` (система повністю виключена) |
+| Без sysroot (нативна) | `prefix → система` (звичайні правила після prefix) |
+
+`find_program()` при крос-компіляції — режим `NEVER` (хост-інструменти завжди
+з хоста, не з sysroot).
+
+Викликається автоматично з `ep_cmake_args()`. Для нестандартного scope:
+
+```cmake
+ep_find_scope(_scope_args)
+ExternalProject_Add(libfoo_ep
+    CMAKE_ARGS ${_foo_cmake_args} ${_scope_args}
+    ...
+)
+```
 
 ---
 
