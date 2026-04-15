@@ -52,7 +52,11 @@ if(USE_SYSTEM_LIBCAMERA)
             pkg_check_modules(LIBCAMERA IMPORTED_TARGET libcamera)
             if(LIBCAMERA_FOUND)
                 if(NOT TARGET libcamera::libcamera)
-                    add_library(libcamera::libcamera ALIAS PkgConfig::LIBCAMERA)
+                    # ALIAS не підходить для non-GLOBAL IMPORTED target (до CMake 3.24).
+                    # Створюємо INTERFACE IMPORTED GLOBAL та делегуємо на PkgConfig::LIBCAMERA.
+                    add_library(libcamera::libcamera INTERFACE IMPORTED GLOBAL)
+                    set_property(TARGET libcamera::libcamera
+                        APPEND PROPERTY INTERFACE_LINK_LIBRARIES PkgConfig::LIBCAMERA)
                 endif()
                 message(STATUS "[LibCamera] Системна (pkg-config): ${LIBCAMERA_LIBRARIES}")
             else()
