@@ -353,6 +353,101 @@ configure_file(version.h.in version.h @ONLY)
 
 ---
 
+## BinaryDeps.cmake
+
+### ep_check_binary_deps
+
+```cmake
+ep_check_binary_deps(<binary_path> [<out_var>])
+```
+
+Рекурсивно знаходить усі динамічні залежності бінарного файлу та класифікує
+їх за джерелом. Виводить дерево залежностей у лог CMake (`message(STATUS ...)`).
+
+#### Параметри
+
+| Параметр | Тип | Обов'язковий | Опис |
+|---|---|---|---|
+| `binary_path` | шлях | так | шлях до бінарника або `.so` |
+| `out_var` | змінна | ні | якщо вказано — записує повні шляхи всіх знайдених бібліотек (без MISSING, без дублів) |
+
+#### Категорії залежностей
+
+| Мітка | Джерело | Рекурсія |
+|---|---|---|
+| `[EP]` | `EXTERNAL_INSTALL_PREFIX/lib` | так |
+| `[TOOLCHAIN]` | директорія компілятора (`gcc -print-libgcc-file-name`) | так |
+| `[SYSROOT]` | `CMAKE_SYSROOT/lib`, `/usr/lib` + multiarch | ні (листовий вузол) |
+| `[SYSTEM]` | `/lib`, `/usr/lib`, `/lib64`, `/usr/lib64` + multiarch | ні (листовий вузол) |
+| `[MISSING]` | не знайдено жодним шляхом | — |
+
+#### Зовнішні залежності
+
+| Змінна | Звідки | Призначення |
+|---|---|---|
+| `CMAKE_READELF` | CMake (крос-білд) або `find_program(readelf)` | читання ELF dynamic section |
+| `EXTERNAL_INSTALL_PREFIX` | `cmake/external/Common.cmake` | директорія EP артефактів |
+| `CMAKE_SYSROOT` | toolchain файл (опційно) | sysroot для крос-компіляції |
+| `CMAKE_C_COMPILER` | toolchain / системний | пошук директорії тулчейна |
+
+#### Поведінка
+
+| Стан | Результат |
+|---|---|
+| `binary_path` не існує | `WARNING`, повернення |
+| `readelf` не знайдено | `FATAL_ERROR` |
+| Цикл залежностей | захист через список відвіданих вузлів |
+| `out_var` не переданий | результат тільки у логу |
+| `out_var` переданий | список повних шляхів у PARENT_SCOPE |
+
+#### Вивід
+
+Дерево з відступами (2 пробіли на рівень) + зведення:
+
+```
+-- [BinaryDeps] /path/to/libopencv_core.so
+-- [BinaryDeps] ─────────────────────────────────────────
+--   [EP]        libjpeg.so.62  (/opt/ep/lib/libjpeg.so.62)
+--     [EP]        libz.so.1  (/opt/ep/lib/libz.so.1)
+--   [TOOLCHAIN] libstdc++.so.6  (/usr/lib/gcc/.../libstdc++.so.6)
+--   [SYSROOT]   libc.so.6  (/srv/sysroot/lib/aarch64-linux-gnu/libc.so.6)
+--   [SYSTEM]    libm.so.6  (/usr/lib/x86_64-linux-gnu/libm.so.6)
+-- [BinaryDeps] ─────────────────────────────────────────
+-- [BinaryDeps] Зведення:
+-- [BinaryDeps]   [EP]        5 бібліотек(и)
+-- [BinaryDeps]   [TOOLCHAIN] 2 бібліотек(и)
+-- [BinaryDeps]   [SYSROOT]   8 бібліотек(и)
+-- [BinaryDeps]   [SYSTEM]    3 бібліотек(и)
+```
+
+#### Приклади
+
+```cmake
+include(BinaryDeps)
+
+# Тільки вивід у лог
+ep_check_binary_deps("/path/to/mybinary")
+
+# Отримати список повних шляхів
+ep_check_binary_deps("/path/to/mybinary" MY_DEPS)
+foreach(_lib IN LISTS MY_DEPS)
+    message(STATUS "  dep: ${_lib}")
+endforeach()
+
+# З generator expression (у post-build кроці)
+ep_check_binary_deps($<TARGET_FILE:my_target> MY_TARGET_DEPS)
+
+# Скопіювати всі EP залежності поряд з бінарником
+ep_check_binary_deps("${_mylib}" _deps)
+foreach(_dep IN LISTS _deps)
+    if(_dep MATCHES "^${EXTERNAL_INSTALL_PREFIX}")
+        file(COPY "${_dep}" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    endif()
+endforeach()
+```
+
+---
+
 ## Сумісність між модулями
 
 | Комбінація | Статус |
@@ -362,3 +457,4 @@ configure_file(version.h.in version.h @ONLY)
 | `Sanitizers` при `CMAKE_CROSSCOMPILING=TRUE` | `WARNING`, продовжує |
 | `cross_check_cxx_flag` + `target_enable_warnings` | сумісні, незалежні |
 | `GitVersion` при відсутньому git | `WARNING`, повертає fallback/unknown |
+| `BinaryDeps` при відсутньому `readelf` | `FATAL_ERROR` |

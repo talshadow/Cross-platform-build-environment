@@ -48,7 +48,8 @@ SupportRaspberryPI/
 │   │   ├── Sanitizers.cmake          # target_enable_sanitizers()
 │   │   ├── CrossCompileHelpers.cmake # cross_check_cxx_flag(), cross_feature_check()
 │   │   ├── GitVersion.cmake          # git_get_version(), git_get_commit_hash()
-│   │   └── StripDebug.cmake          # strip_debug / strip_all / strip_split targets
+│   │   ├── StripDebug.cmake          # strip_debug / strip_all / strip_split targets
+│   │   └── BinaryDeps.cmake          # ep_check_binary_deps() — рекурсивний аналіз залежностей
 │   │
 │   ├── external/
 │   │   ├── Common.cmake        # Спільні утиліти ExternalProject
@@ -70,7 +71,8 @@ SupportRaspberryPI/
 │   │   ├── EasyProfiler.cmake  # easy_profiler     (easy_profiler::easy_profiler)
 │   │   ├── Ncnn.cmake          # ncnn              (ncnn::ncnn)
 │   │   ├── LibIr.cmake         # libir             (libir::libir)
-│   │   ├── AirSim.cmake        # AirSim client     (AirSim::AirLib)
+│   │   ├── Rpclib.cmake        # rpclib            (rpclib::rpc)
+│   │   ├── AirSim.cmake        # AirSim client     (AirSim::AirLib) — shared
 │   │   ├── PhySys.cmake        # PhysicsFS         (PhysicsFS::PhysicsFS)
 │   │   ├── PhySysCpp.cmake     # physfs-hpp        (physfs-hpp::physfs-hpp) h-only
 │   │   └── RpiCamApps.cmake    # rpicam-apps       (rpicam_apps::camera_app)
@@ -304,6 +306,10 @@ target_link_libraries(my_app PRIVATE PNG::PNG JPEG::JPEG OpenSSL::SSL)
 | `USE_SYSTEM_OPENSSL` | `OFF` | зібрати з джерел через ExternalProject |
 | `USE_SYSTEM_BOOST` | `OFF` | зібрати з джерел через ExternalProject |
 | `USE_SYSTEM_OPENCV` | `OFF` | зібрати з джерел через ExternalProject |
+| `USE_SYSTEM_LIBCAMERA` | `OFF` | зібрати з джерел через Meson ExternalProject |
+| `USE_SYSTEM_LIBPISP` | `OFF` | зібрати з джерел через Meson ExternalProject |
+| `USE_SYSTEM_RPICAMAPPS` | `OFF` | зібрати з джерел через Meson ExternalProject |
+| `USE_SYSTEM_RPCLIB` | `OFF` | зібрати з джерел через ExternalProject |
 
 ```bash
 # Використати системний OpenSSL замість збірки з джерел
@@ -354,8 +360,14 @@ cmake --build build-super
 LibPng  ──┐
 LibJpeg ──┼──▶ LibTiff ──┐
           │               ├──▶ OpenCV
-OpenSSL ──┘               │
-Boost   ──────────────────┘
+OpenSSL ──┘──────────────┘──▶ LibEvent ──▶ LibCamera ──┐
+Boost   ─────────────────────────────────────────────┤
+                                                       ├──▶ LibPisp
+                                                       └──▶ RpiCamApps
+Eigen3  ──┐
+          ├──▶ AirSim
+Rpclib  ──┘
+PhySys  ──────▶ PhySysCpp
 ```
 
 ---

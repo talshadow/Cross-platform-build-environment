@@ -1,6 +1,6 @@
 # cmake/modules/BinaryDeps.cmake
 #
-# ep_check_binary_deps(<binary_path>)
+# ep_check_binary_deps(<binary_path> [<out_var>])
 #
 # Рекурсивно знаходить всі залежності бінарного файлу на динамічні
 # бібліотеки та класифікує їх за джерелом:
@@ -15,10 +15,16 @@
 # не вийде за їхні межі (SYSROOT/SYSTEM) або не зустріне вже відвіданий
 # вузол (захист від циклів).
 #
+# Якщо передано <out_var> — записує у неї список повних шляхів до ВСІХ
+# знайдених бібліотек (EP + TOOLCHAIN + SYSROOT + SYSTEM), без дублів.
+# MISSING бібліотеки до списку не потрапляють.
+#
 # Використання:
 #   include(BinaryDeps)
 #   ep_check_binary_deps("/path/to/mybinary")
-#   ep_check_binary_deps($<TARGET_FILE:my_target>)
+#   ep_check_binary_deps("/path/to/mybinary" ALL_LIBS)
+#   foreach(_lib IN LISTS ALL_LIBS) ... endforeach()
+#   ep_check_binary_deps($<TARGET_FILE:my_target> MYBINARY_DEPS)
 #
 # Залежить від:
 #   CMAKE_READELF           — встановлюється cmake (підтримує cross-build)
@@ -165,19 +171,23 @@ function(_ep_binarydeps_recurse full_path depth)
         if(_found_ep)
             message(STATUS "${_indent}[EP]        ${_soname}  (${_found_ep})")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_EP "${_soname}")
+            set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_ALL_PATHS  "${_found_ep}")
             math(EXPR _next "${depth} + 1")
             _ep_binarydeps_recurse("${_found_ep}" ${_next})
         elseif(_found_tc)
             message(STATUS "${_indent}[TOOLCHAIN] ${_soname}  (${_found_tc})")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_TC "${_soname}")
+            set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_ALL_PATHS  "${_found_tc}")
             math(EXPR _next "${depth} + 1")
             _ep_binarydeps_recurse("${_found_tc}" ${_next})
         elseif(_found_sr)
-            message(STATUS "${_indent}[SYSROOT]   ${_soname}")
+            message(STATUS "${_indent}[SYSROOT]   ${_soname}  (${_found_sr})")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_SR "${_soname}")
+            set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_ALL_PATHS  "${_found_sr}")
         elseif(_found_sys)
-            message(STATUS "${_indent}[SYSTEM]    ${_soname}")
+            message(STATUS "${_indent}[SYSTEM]    ${_soname}  (${_found_sys})")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_SYS "${_soname}")
+            set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_ALL_PATHS   "${_found_sys}")
         else()
             message(STATUS "${_indent}[MISSING]   ${_soname}")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_MISSING "${_soname}")
@@ -186,9 +196,11 @@ function(_ep_binarydeps_recurse full_path depth)
 endfunction()
 
 # ---------------------------------------------------------------------------
-# ep_check_binary_deps(<binary_path>)
+# ep_check_binary_deps(<binary_path> [<out_var>])
 #
 # Публічна функція. Скидає стан, запускає рекурсивний обхід, виводить зведення.
+# Якщо передано <out_var> — записує повні шляхи всіх знайдених бібліотек у
+# змінну батьківського scope (без дублів, без MISSING).
 # ---------------------------------------------------------------------------
 function(ep_check_binary_deps binary_path)
     if(NOT EXISTS "${binary_path}")
@@ -209,12 +221,13 @@ function(ep_check_binary_deps binary_path)
     set_property(GLOBAL PROPERTY _EP_BINARYDEPS_READELF "${_readelf}")
 
     # Скидаємо стан попереднього запуску
-    set_property(GLOBAL PROPERTY _EP_BINARYDEPS_VISITED        "")
+    set_property(GLOBAL PROPERTY _EP_BINARYDEPS_VISITED         "")
     set_property(GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_EP      "")
     set_property(GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_TC      "")
     set_property(GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_SR      "")
     set_property(GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_SYS     "")
     set_property(GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_MISSING "")
+    set_property(GLOBAL PROPERTY _EP_BINARYDEPS_ALL_PATHS       "")
 
     # Будуємо таблицю пошукових директорій
     _ep_binarydeps_build_search_dirs()
@@ -255,4 +268,13 @@ function(ep_check_binary_deps binary_path)
         message(WARNING "[BinaryDeps]   [MISSING]   ${_n_missing}: ${_missing_str}")
     endif()
     message(STATUS "")
+
+    # ── Повернути список повних шляхів ───────────────────────────────────────
+    if(ARGC GREATER 1)
+        get_property(_all_paths GLOBAL PROPERTY _EP_BINARYDEPS_ALL_PATHS)
+        if(_all_paths)
+            list(REMOVE_DUPLICATES _all_paths)
+        endif()
+        set(${ARGV1} "${_all_paths}" PARENT_SCOPE)
+    endif()
 endfunction()

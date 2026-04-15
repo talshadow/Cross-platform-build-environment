@@ -58,8 +58,8 @@ source /opt/poky/<ver>/environment-setup-<target>-poky-linux
 
 ```
 cmake/toolchains/   — toolchain файли для кожної платформи
-cmake/modules/      — CompilerWarnings, Sanitizers, CrossCompileHelpers, GitVersion, StripDebug
-cmake/external/     — сторонні бібліотеки через ExternalProject (21 бібліотека; див. spec-external.md)
+cmake/modules/      — CompilerWarnings, Sanitizers, CrossCompileHelpers, GitVersion, StripDebug, BinaryDeps
+cmake/external/     — сторонні бібліотеки через ExternalProject (22 бібліотеки; див. spec-external.md)
 cmake/SuperBuild.cmake — superbuild режим
 scripts/            — install-toolchains, get-sysroot-*, sync-sysroot, build, deploy
 docs/               — overview.md, toolchains.md, getting-started.md
@@ -112,6 +112,7 @@ include(CompilerWarnings)
 include(Sanitizers)
 include(CrossCompileHelpers)
 include(GitVersion)
+include(BinaryDeps)
 
 target_enable_warnings(my_target STRICT)
 target_enable_sanitizers(my_target ASAN UBSAN)
@@ -119,6 +120,8 @@ cross_get_target_info()  # діагностичний вивід конфігу�
 
 git_get_version(PROJECT_VERSION)    # з git тегу, FALLBACK="0.0.0"
 git_get_commit_hash(GIT_HASH)       # скорочений хеш HEAD (7 символів)
+
+ep_check_binary_deps("/path/to/binary" DEPS)  # рекурсивний аналіз залежностей
 ```
 
 ## Алгоритм Lib*.cmake (USE_SYSTEM=OFF)
@@ -173,11 +176,11 @@ target_link_libraries(my_app PRIVATE PNG::PNG JPEG::JPEG OpenSSL::SSL)
 `USE_SYSTEM_LIBPNG`, `USE_SYSTEM_LIBJPEG`, `USE_SYSTEM_LIBTIFF`,
 `USE_SYSTEM_OPENSSL`, `USE_SYSTEM_BOOST`, `USE_SYSTEM_OPENCV`,
 `USE_SYSTEM_GEOGRAPHICLIB`, `USE_SYSTEM_EIGEN3`, `USE_SYSTEM_LIBEVENT`,
-`USE_SYSTEM_LIBCAMERA` **(ON)**, `USE_SYSTEM_LIBPISP` **(ON)**,
+`USE_SYSTEM_LIBCAMERA`, `USE_SYSTEM_LIBPISP`, `USE_SYSTEM_RPCLIB`,
 `USE_SYSTEM_NLOHMANN`, `USE_SYSTEM_BOOSTDI`, `USE_SYSTEM_BOOSTSML`,
 `USE_SYSTEM_EASYPROFILER`, `USE_SYSTEM_NCNN`, `USE_SYSTEM_LIBIR`,
 `USE_SYSTEM_AIRSIM`, `USE_SYSTEM_PHYSYS`, `USE_SYSTEM_PHYSYSCPP`,
-`USE_SYSTEM_RPICAMAPPS` **(ON)**.
+`USE_SYSTEM_RPICAMAPPS`.
 
 SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проєкт як окремі ExternalProject.
 

@@ -11,15 +11,16 @@ cmake/external/
 ├── LibPng.cmake        LibJpeg.cmake   OpenSSL.cmake   Boost.cmake
 ├── Eigen3.cmake        Nlohmann.cmake  BoostDI.cmake   BoostSML.cmake
 ├── EasyProfiler.cmake  Ncnn.cmake      LibIr.cmake     GeographicLib.cmake
+├── Rpclib.cmake
 │
 ├── ── Залежності (порядок важливий) ──
 ├── LibTiff.cmake       ← LibJpeg, LibPng
 ├── OpenCV.cmake        ← LibJpeg, LibPng, LibTiff, OpenSSL
 ├── LibEvent.cmake      ← OpenSSL
-├── LibCamera.cmake     ← (незалежна; зазвичай з sysroot)
+├── LibCamera.cmake     ← LibEvent (cam утиліта)
 ├── LibPisp.cmake       ← LibCamera, Boost
 ├── RpiCamApps.cmake    ← LibCamera, Boost
-├── AirSim.cmake        ← Eigen3
+├── AirSim.cmake        ← Eigen3, Rpclib
 ├── PhySys.cmake        ← (незалежна — PhysicsFS)
 └── PhySysCpp.cmake     ← PhySys  (physfs-hpp)
 cmake/SuperBuild.cmake  ← superbuild режим
@@ -52,6 +53,7 @@ cmake/SuperBuild.cmake  ← superbuild режим
 | easy_profiler | `easy_profiler::easy_profiler` | `SHARED IMPORTED` |
 | ncnn | `ncnn::ncnn` | `SHARED IMPORTED` |
 | libir | `libir::libir` | `SHARED IMPORTED` |
+| rpclib | `rpclib::rpc` | `SHARED IMPORTED` |
 | AirSim | `AirSim::AirLib` | `SHARED IMPORTED` |
 | PhysicsFS | `PhysicsFS::PhysicsFS` | `SHARED IMPORTED` |
 | physfs-hpp | `physfs-hpp::physfs-hpp` | `INTERFACE IMPORTED` |
@@ -367,6 +369,99 @@ ExternalProject_Add(libtiff_ep DEPENDS ${_deps} ...)
 
 ---
 
+### _ep_cmake_to_meson_buildtype(out_var [cmake_build_type])
+
+Перетворює значення `CMAKE_BUILD_TYPE` у відповідний тип збірки Meson.
+
+```cmake
+_ep_cmake_to_meson_buildtype(_bt)
+# Далі: --buildtype=${_bt}
+```
+
+| CMAKE_BUILD_TYPE | Meson buildtype |
+|---|---|
+| `Debug` | `debug` |
+| `Release` | `release` |
+| `RelWithDebInfo` | `debugoptimized` |
+| `MinSizeRel` | `minsize` |
+| будь-яке інше | `debug` |
+
+Якщо другий аргумент не переданий — використовується `CMAKE_BUILD_TYPE`.
+
+---
+
+### _ep_require_meson()
+
+Перевіряє наявність `meson` та `ninja` в `PATH`.
+При відсутності зупиняє конфігурацію з `FATAL_ERROR` та підказкою:
+
+```
+[EP] meson не знайдено. Встановіть:
+  Ubuntu/Debian : sudo apt install meson ninja-build
+  Arch/CachyOS  : sudo pacman -S meson ninja
+```
+
+Викликати перед `ExternalProject_Add` для бібліотек на базі Meson
+(LibCamera, LibPisp, RpiCamApps).
+
+---
+
+### _ep_require_python_modules(module1 [module2 ...])
+
+Перевіряє наявність Python-модулів через `python3 -c "import <module>"`.
+При відсутності — `FATAL_ERROR` з підказками по кожному модулю окремо.
+
+```cmake
+_ep_require_python_modules(yaml ply)
+```
+
+Підказки для відомих модулів:
+
+| Модуль | Ubuntu/Debian | Arch/CachyOS |
+|---|---|---|
+| `yaml` | `sudo apt install python3-yaml` | `sudo pacman -S python-yaml` |
+| `ply` | `sudo apt install python3-ply` | `sudo pacman -S python-ply` |
+
+Ці модулі є HOST-інструментами (генератор IPA protocol у LibCamera) —
+вони виконуються на хості під час збірки та не потрапляють у sysroot.
+
+---
+
+## Meson-based ExternalProject
+
+Деякі бібліотеки використовують систему збірки Meson (LibCamera, LibPisp, RpiCamApps).
+Для них `ExternalProject_Add` не використовує `CMAKE_ARGS`, а потребує окремого шаблону:
+
+```cmake
+_ep_require_meson()
+_ep_cmake_to_meson_buildtype(_meson_bt)
+
+ExternalProject_Add(libfoo_ep
+    ...
+    CONFIGURE_COMMAND
+        env PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig
+        ${_meson_prog} setup
+            --prefix=${EXTERNAL_INSTALL_PREFIX}
+            --libdir=lib
+            --buildtype=${_meson_bt}
+            <BINARY_DIR>
+            <SOURCE_DIR>
+    BUILD_COMMAND
+        ${_ninja_prog} -C <BINARY_DIR> -j${_EP_NPROC}
+    INSTALL_COMMAND
+        ${_ninja_prog} -C <BINARY_DIR> install
+    BUILD_BYPRODUCTS "${_foo_lib}"
+    ...
+)
+```
+
+**Важливо:**
+- `<BINARY_DIR>` і `<SOURCE_DIR>` — без лапок (CMake роздільник аргументів)
+- `-Dkey=${var}` — без зовнішніх лапок (інакше cmake розбиває на два аргументи)
+- `PKG_CONFIG_PATH` через `env` — забезпечує видимість наших `.pc` файлів для Meson
+
+---
+
 ## Порядок залежностей у ExternalDeps.cmake
 
 ```
@@ -374,29 +469,53 @@ LibPng     ──┐
 LibJpeg    ──┼──▶ LibTiff ──┐
              │               └──▶ OpenCV
 OpenSSL    ──┘──────────────────▶ OpenCV
-                 OpenSSL ────────▶ LibEvent
+                 OpenSSL ────────▶ LibEvent ──▶ LibCamera
 LibCamera  ──┐
              ├──▶ LibPisp
 Boost      ──┤
              └──▶ RpiCamApps
-Eigen3     ──────▶ AirSim
+Eigen3     ──┐
+             ├──▶ AirSim
+Rpclib     ──┘
 PhySys     ──────▶ PhySysCpp
 ```
 
 Незалежні бібліотеки (без залежностей між собою):
 `LibPng`, `LibJpeg`, `OpenSSL`, `Boost`, `Eigen3`, `GeographicLib`,
-`Nlohmann`, `BoostDI`, `BoostSML`, `EasyProfiler`, `Ncnn`, `LibIr`, `LibCamera`, `PhySys`
+`Nlohmann`, `BoostDI`, `BoostSML`, `EasyProfiler`, `Ncnn`, `LibIr`, `Rpclib`, `PhySys`
 
 Порядок `include()` у `ExternalDeps.cmake`:
 1. `Common.cmake`
-2. Незалежні бібліотеки
+2. Незалежні бібліотеки (включно з `Rpclib.cmake`)
 3. `LibTiff.cmake` (залежить від LibJpeg + LibPng)
 4. `OpenCV.cmake` (залежить від LibJpeg, LibPng, LibTiff, OpenSSL)
 5. `LibEvent.cmake` (залежить від OpenSSL)
-6. `LibCamera.cmake`
+6. `LibCamera.cmake` (залежить від LibEvent через `cam` утиліту)
 7. `LibPisp.cmake`, `RpiCamApps.cmake` (залежать від LibCamera + Boost)
-8. `AirSim.cmake` (залежить від Eigen3)
+8. `AirSim.cmake` (залежить від Eigen3 + Rpclib)
 9. `PhySys.cmake`, `PhySysCpp.cmake`
+
+> **Важливо:** порядок `include()` НЕ є достатньою умовою для правильного порядку збірки.
+> Кожен `ExternalProject_Add` повинен мати **явний** `DEPENDS` на EP-цілі своїх залежностей.
+> Порядок include() лише гарантує що cmake-targets оголошені до використання;
+> без `DEPENDS` паралельний `ninja`/`make -jN` може запустити збірку залежних бібліотек
+> до завершення їхніх залежностей.
+
+```cmake
+# Приклад: LibTiff залежить від LibJpeg та LibPng
+_ep_collect_deps(_tiff_deps libjpeg_ep libpng_ep)
+ExternalProject_Add(libtiff_ep
+    DEPENDS ${_tiff_deps}
+    ...
+)
+
+# Приклад: AirSim залежить від Eigen3 та Rpclib
+_ep_collect_deps(_airsim_deps eigen3_ep rpclib_ep)
+ExternalProject_Add(airsim_ep
+    DEPENDS ${_airsim_deps}
+    ...
+)
+```
 
 ---
 
