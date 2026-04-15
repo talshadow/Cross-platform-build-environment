@@ -91,7 +91,12 @@ SupportRaspberryPI/
 └── docs/
     ├── overview.md             # Цей файл
     ├── toolchains.md           # Детальний опис toolchain файлів
-    └── getting-started.md      # Покрокова інструкція
+    ├── getting-started.md      # Покрокова інструкція
+    ├── ide-setup.md            # Qt Creator та VS Code: пресети, IntelliSense, remote debug
+    ├── spec-presets.md         # Специфікація CMakePresets.json: конвенції, чеклист
+    ├── spec-external.md        # Специфікація Lib*.cmake: контракти, API Common.cmake
+    ├── spec-toolchain.md       # Специфікація toolchain файлів: вимоги, заборони
+    └── spec-modules.md         # Специфікація cmake/modules: повний API
 ```
 
 ---
