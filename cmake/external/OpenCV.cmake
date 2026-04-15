@@ -188,15 +188,6 @@ else()
             ${_ocv_dep_args}
         )
 
-        # Залежності: спочатку contrib (clone), потім image libs
-        # _ep_collect_deps повертає тільки імена цілей (без "DEPENDS")
-        set(_ocv_ep_depends "")
-        if(OPENCV_ENABLE_CONTRIB)
-            list(APPEND _ocv_ep_depends opencv_contrib_ep)
-        endif()
-        _ep_collect_deps(_ocv_img_targets libjpeg_ep libpng_ep libtiff_ep openssl_ep)
-        list(APPEND _ocv_ep_depends ${_ocv_img_targets})
-
         # BYPRODUCTS — основні модулі для Ninja
         set(_ocv_byproducts "")
         foreach(_mod IN LISTS _ocv_modules)
@@ -215,7 +206,6 @@ else()
                     "${EP_SOURCES_DIR}/opencv/cmake/OpenCVGenPkgconfig.cmake"
             CMAKE_ARGS       ${_ocv_cmake_args}
             BUILD_BYPRODUCTS ${_ocv_byproducts}
-            DEPENDS          ${_ocv_ep_depends}
             LOG_DOWNLOAD     ON
             LOG_BUILD        ON
             LOG_INSTALL      ON

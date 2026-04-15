@@ -102,15 +102,11 @@ else()
             set(_libcamera_pipelines "auto")
         endif()
 
-        # cam потребує libevent — передаємо через PKG_CONFIG_PATH
-        _ep_collect_deps(_libcamera_ep_deps libevent_ep)
-
         ExternalProject_Add(libcamera_ep
             GIT_REPOSITORY  "${LIBCAMERA_GIT_REPO}"
             GIT_TAG         "${LIBCAMERA_VERSION}"
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/libcamera"
-            DEPENDS         ${_libcamera_ep_deps}
             CONFIGURE_COMMAND
                 env
                     PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig

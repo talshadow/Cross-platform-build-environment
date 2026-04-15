@@ -91,9 +91,6 @@ else()
         # Генеруємо meson cross-file
         _meson_generate_cross_file(_libpisp_cross_args)
 
-        # Залежності від інших EP
-        _ep_collect_deps(_libpisp_ep_deps libcamera_ep boost_ep)
-
         # Boost include dir для передачі в Meson
         set(_libpisp_boost_inc "")
         if(TARGET Boost::headers)
@@ -108,7 +105,6 @@ else()
             GIT_TAG         "${LIBPISP_VERSION}"
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/libpisp"
-            DEPENDS         ${_libpisp_ep_deps}
             CONFIGURE_COMMAND
                 env
                     PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig

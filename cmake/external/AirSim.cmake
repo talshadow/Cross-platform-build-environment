@@ -66,10 +66,6 @@ else()
             set(_airsim_eigen_inc "${EXTERNAL_INSTALL_PREFIX}/include")
         endif()
 
-        # rpclib: передаємо як залежність та симлінкуємо джерела у PATCH_COMMAND
-        # (AirSim використовує add_subdirectory для rpclib, а не find_package)
-        _ep_collect_deps(_airsim_ep_deps eigen3_ep rpclib_ep)
-
         ep_cmake_args(_airsim_cmake_args
             # Збираємо тільки AirLib (клієнт), без прикладів
             -DBUILD_EXAMPLES=OFF
@@ -115,7 +111,6 @@ else()
                     "${EP_SOURCES_DIR}/airsim/cmake/AirLib/CMakeLists.txt"
             SOURCE_SUBDIR   "cmake"
             CMAKE_ARGS      ${_airsim_cmake_args}
-            DEPENDS         ${_airsim_ep_deps}
             # AirSim не має install() — копіюємо вручну
             INSTALL_COMMAND
                 ${CMAKE_COMMAND} -E copy

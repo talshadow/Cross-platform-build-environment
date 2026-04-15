@@ -85,16 +85,12 @@ else()
             ${_libevent_ssl_args}
         )
 
-        # openssl_ep як залежність (якщо оголошено)
-        _ep_collect_deps(_libevent_ep_deps openssl_ep)
-
         ExternalProject_Add(libevent_ep
             GIT_REPOSITORY  "${LIBEVENT_GIT_REPO}"
             GIT_TAG         "release-${LIBEVENT_VERSION}"
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/libevent"
             CMAKE_ARGS      ${_libevent_cmake_args}
-            DEPENDS         ${_libevent_ep_deps}
             BUILD_BYPRODUCTS
                 "${_libevent_core}"
                 "${_libevent_extra}"

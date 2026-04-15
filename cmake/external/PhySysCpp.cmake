@@ -53,9 +53,6 @@ else()
     else()
         message(STATUS "[PhysFSCpp] Буде встановлено з джерел (${PHYSYSCPP_VERSION})")
 
-        # physfs-hpp потребує PhysicsFS для свого CMake (знаходить headers)
-        _ep_collect_deps(_physfscpp_ep_deps physfs_ep)
-
         # physfs-hpp — header-only, cmake не потрібен.
         # Просто копіюємо physfs.hpp після клонування.
         ExternalProject_Add(physfscpp_ep
@@ -63,7 +60,6 @@ else()
             GIT_TAG           "${PHYSYSCPP_VERSION}"
             GIT_SHALLOW       ON
             SOURCE_DIR        "${EP_SOURCES_DIR}/physfscpp"
-            DEPENDS           ${_physfscpp_ep_deps}
             CONFIGURE_COMMAND ""
             BUILD_COMMAND     ""
             INSTALL_COMMAND

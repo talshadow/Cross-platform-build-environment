@@ -495,27 +495,29 @@ PhySys     ──────▶ PhySysCpp
 8. `AirSim.cmake` (залежить від Eigen3 + Rpclib)
 9. `PhySys.cmake`, `PhySysCpp.cmake`
 
-> **Важливо:** правильний порядок збірки забезпечується двома речами разом:
+> **Важливо:** правильний порядок збірки забезпечується двома механізмами:
 > 1. Порядок `include()` у `ExternalDeps.cmake` — гарантує що cmake-targets оголошені до використання.
-> 2. Явний `DEPENDS` у `ExternalProject_Add` всередині **того самого** `Lib*.cmake` —
->    гарантує що `ninja -jN` не запустить збірку до завершення залежностей.
+> 2. `add_dependencies()` у **тому ж** `ExternalDeps.cmake` після кожного `include()` —
+>    гарантує що `ninja -jN` не запустить збірку залежної бібліотеки до завершення її залежностей.
 >
-> Обидва механізми живуть разом: `ExternalDeps.cmake` викликає `include(LibTiff.cmake)`,
-> а `LibTiff.cmake` сам містить і `ExternalProject_Add(libtiff_ep DEPENDS ...)`.
+> `ExternalDeps.cmake` є єдиним місцем де описується граф залежностей між EP.
+> Самі `Lib*.cmake` файли лише оголошують `ExternalProject_Add` без `DEPENDS`.
 
 ```cmake
-# ExternalDeps.cmake — лише порядок include()
+# ExternalDeps.cmake — include() + add_dependencies() в одному місці
 include("${_ep_dir}/LibJpeg.cmake")   # оголошує libjpeg_ep
 include("${_ep_dir}/LibPng.cmake")    # оголошує libpng_ep
-include("${_ep_dir}/LibTiff.cmake")   # всередині: DEPENDS libjpeg_ep libpng_ep
-
-# LibTiff.cmake — DEPENDS у тому ж файлі де живе ExternalProject_Add
-_ep_collect_deps(_tiff_deps libjpeg_ep libpng_ep)
-ExternalProject_Add(libtiff_ep
-    DEPENDS ${_tiff_deps}
-    ...
-)
+include("${_ep_dir}/LibTiff.cmake")   # оголошує libtiff_ep
+if(TARGET libtiff_ep)
+    _ep_collect_deps(_deps libjpeg_ep libpng_ep)
+    if(_deps)
+        add_dependencies(libtiff_ep ${_deps})
+    endif()
+endif()
 ```
+
+`_ep_collect_deps` повертає лише ті EP-цілі що реально оголошені — безпечно
+якщо залежність використовує `USE_SYSTEM=ON` (EP-ціль не існує).
 
 ---
 
@@ -610,11 +612,18 @@ unset(_new_inc)
 
 2. Додати `include("${_ep_dir}/LibNew.cmake")` у `ExternalDeps.cmake` у правильному місці за залежностями.
 
-3. Якщо нова бібліотека є залежністю для іншої — передати через `_ep_collect_deps()`:
+3. Якщо нова бібліотека має залежності від інших EP — додати `add_dependencies()` у `ExternalDeps.cmake`
+   одразу після `include()`:
 
 ```cmake
-_ep_collect_deps(_new_deps libnew_ep)
-ExternalProject_Add(libother_ep DEPENDS ${_new_deps} ...)
+# ExternalDeps.cmake
+include("${_ep_dir}/LibNew.cmake")
+if(TARGET libnew_ep)
+    _ep_collect_deps(_deps libother_ep)
+    if(_deps)
+        add_dependencies(libnew_ep ${_deps})
+    endif()
+endif()
 ```
 
 4. Якщо використовується SuperBuild — додати `libnew_ep` до списку `_sb_all_lib_eps` у `SuperBuild.cmake`.

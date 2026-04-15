@@ -76,10 +76,6 @@ else()
             ${_tiff_dep_args}
         )
 
-        # Залежності від EP що будуються паралельно (якщо є)
-        # _ep_collect_deps повертає тільки імена цілей (без "DEPENDS")
-        _ep_collect_deps(_tiff_ep_targets libjpeg_ep libpng_ep)
-
         ExternalProject_Add(libtiff_ep
             GIT_REPOSITORY  "${LIBTIFF_GIT_REPO}"
             GIT_TAG         "v${LIBTIFF_VERSION}"
@@ -87,7 +83,6 @@ else()
             SOURCE_DIR      "${EP_SOURCES_DIR}/libtiff"
             CMAKE_ARGS      ${_tiff_cmake_args}
             BUILD_BYPRODUCTS "${_tiff_lib}"
-            DEPENDS          ${_tiff_ep_targets}
             LOG_DOWNLOAD    ON
             LOG_BUILD       ON
             LOG_INSTALL     ON
