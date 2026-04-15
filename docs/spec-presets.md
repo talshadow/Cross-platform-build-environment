@@ -18,7 +18,7 @@
 ```
 base  (hidden)
 │   generator: Ninja
-│   binaryDir: ${sourceDir}/build/${presetName}
+│   binaryDir: $env{HOME}/build/${sourceDirName}/${presetName}
 │   CMAKE_EXPORT_COMPILE_COMMANDS: ON
 │
 └── base-cross  (hidden)
@@ -138,7 +138,7 @@ LTO вмикається лише в Release нативних пресетів (
 |---|---|---|
 | `CMAKE_EXPORT_COMPILE_COMMANDS` | `base` | `ON` |
 | `BUILD_TESTS` | `base-cross` | `OFF` |
-| `binaryDir` | `base` | `${sourceDir}/build/${presetName}` |
+| `binaryDir` | `base` | `$env{HOME}/build/${sourceDirName}/${presetName}` |
 | `generator` | `base` | `Ninja` |
 
 Не перевизначати ці змінні в конкретних пресетах без вагомої причини.
