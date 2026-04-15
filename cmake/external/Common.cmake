@@ -100,20 +100,64 @@ option(USE_ORIGIN_RPATH
     ON)
 
 # ---------------------------------------------------------------------------
+# ep_find_scope(<out_var>)
+#
+# Повертає CMAKE_ARGS для пріоритету пошуку в ExternalProject суб-збірках.
+# Охоплює find_library(), find_path(), find_package(), find_program().
+#
+# Пріоритет:
+#   З sysroot (крос):      prefix → sysroot   (система повністю виключена)
+#   Без sysroot (нативна): prefix → система   (звичайні правила після prefix)
+#
+# find_program() при крос-компіляції завжди шукає на хості (NEVER) —
+# генератори коду (python3, perl тощо) мають бути хост-інструментами.
+#
+# Викликається автоматично з ep_cmake_args(). Можна викликати явно з
+# Lib*.cmake для перевизначення scope окремої суб-збірки:
+#
+#   ep_find_scope(_scope_args)
+#   ExternalProject_Add(foo_ep CMAKE_ARGS ${_foo_args} ${_scope_args} ...)
+# ---------------------------------------------------------------------------
+function(ep_find_scope out_var)
+    if(CMAKE_SYSROOT)
+        # Крос-компіляція: тільки наш prefix та sysroot,
+        # системні шляхи хоста повністю виключені.
+        set(${out_var}
+            -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+            -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+            PARENT_SCOPE)
+    else()
+        # Нативна збірка: наш prefix першим, потім звичайний системний пошук.
+        set(${out_var}
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH
+            PARENT_SCOPE)
+    endif()
+endfunction()
+
+# ---------------------------------------------------------------------------
 # ep_cmake_args(<out_var> [extra -DKEY=VAL ...])
 #
 # Формує список аргументів для ExternalProject_Add(CMAKE_ARGS ...).
-# Автоматично передає: toolchain, sysroot, компілятори, ar/ranlib/strip, RPATH.
+# Автоматично передає: toolchain, sysroot, компілятори, ar/ranlib/strip,
+# пріоритет пошуку (ep_find_scope), RPATH.
 # ---------------------------------------------------------------------------
 function(ep_cmake_args out_var)
     set(_args
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_PREFIX}
         -DBUILD_SHARED_LIBS=ON
-        # Ізоляція: заборонити пошук системних бібліотек у дочірніх EP
-        -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
-        -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
     )
+
+    # Пріоритет пошуку: prefix → sysroot|система (залежно від конфігурації)
+    ep_find_scope(_scope_args)
+    list(APPEND _args ${_scope_args})
 
     # Toolchain
     if(CMAKE_TOOLCHAIN_FILE)
