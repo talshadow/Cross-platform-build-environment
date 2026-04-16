@@ -112,6 +112,10 @@ else()
     if(OpenCV_FOUND)
         message(STATUS "[OpenCV] Знайдено готову бібліотеку у ${_ocv_prefix} (${OpenCV_VERSION})")
 
+    elseif(EXISTS "${_ocv_core}")
+        _ocv_make_imported_targets("")
+        message(STATUS "[OpenCV] Знайдено .so у ${_ocv_prefix}")
+
     else()
         message(STATUS "[OpenCV] Буде зібрано з джерел (версія ${OPENCV_VERSION})")
 
@@ -217,7 +221,7 @@ else()
             # Патч: OpenCVGenPkgconfig.cmake використовує cmake_minimum_required < 3.5,
             # що несумісно з CMake >= 3.28. Виправляємо в джерелах.
             PATCH_COMMAND
-                sed -i "s/cmake_minimum_required(VERSION 2\\.[0-9][0-9.]*/cmake_minimum_required(VERSION 3.5/"
+                sed -i "s/cmake_minimum_required(VERSION 2\\.[0-9][0-9.]*/cmake_minimum_required(VERSION 3.28/"
                     "${EP_SOURCES_DIR}/opencv/cmake/OpenCVGenPkgconfig.cmake"
             CMAKE_ARGS       ${_ocv_cmake_args}
             BUILD_BYPRODUCTS ${_ocv_byproducts}

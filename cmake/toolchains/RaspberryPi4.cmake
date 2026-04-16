@@ -12,7 +12,7 @@
 #     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/RaspberryPi4.cmake \
 #     [-DRPI_SYSROOT=/path/to/sysroot]
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 set(CMAKE_SYSTEM_NAME      Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
@@ -29,20 +29,31 @@ include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")
 # Шукаємо версований компілятор (aarch64-linux-gnu-gcc-12),
 # якщо не знайдено — fallback на неверсований (aarch64-linux-gnu-gcc)
 find_program(_RPI4_CC_VERSIONED
-    "${RPI4_TOOLCHAIN_PREFIX}-gcc-${RPI4_GCC_VERSION}")
+    "${RPI4_TOOLCHAIN_PREFIX}-gcc-${RPI4_GCC_VERSION}"
+    HINTS ENV PATH)
 
 if(_RPI4_CC_VERSIONED)
-    set(CMAKE_C_COMPILER   "${RPI4_TOOLCHAIN_PREFIX}-gcc-${RPI4_GCC_VERSION}"
-        CACHE FILEPATH "C compiler" FORCE)
-    set(CMAKE_CXX_COMPILER "${RPI4_TOOLCHAIN_PREFIX}-g++-${RPI4_GCC_VERSION}"
-        CACHE FILEPATH "C++ compiler" FORCE)
+    find_program(_RPI4_CXX_VERSIONED
+        "${RPI4_TOOLCHAIN_PREFIX}-g++-${RPI4_GCC_VERSION}"
+        HINTS ENV PATH)
+    set(CMAKE_C_COMPILER   "${_RPI4_CC_VERSIONED}"  CACHE FILEPATH "C compiler"   FORCE)
+    set(CMAKE_CXX_COMPILER "${_RPI4_CXX_VERSIONED}" CACHE FILEPATH "C++ compiler" FORCE)
+    unset(_RPI4_CXX_VERSIONED)
     find_program(_AR    "${RPI4_TOOLCHAIN_PREFIX}-ar")
     find_program(_STRIP "${RPI4_TOOLCHAIN_PREFIX}-strip")
     find_program(_RANLIB "${RPI4_TOOLCHAIN_PREFIX}-ranlib")
-    if(_AR)     set(CMAKE_AR     "${_AR}"     CACHE FILEPATH "Archiver" FORCE) endif()
-    if(_STRIP)  set(CMAKE_STRIP  "${_STRIP}"  CACHE FILEPATH "Strip"    FORCE) endif()
-    if(_RANLIB) set(CMAKE_RANLIB "${_RANLIB}" CACHE FILEPATH "Ranlib"   FORCE) endif()
-    unset(_AR) unset(_STRIP) unset(_RANLIB)
+    if(_AR)
+        set(CMAKE_AR     "${_AR}"     CACHE FILEPATH "Archiver" FORCE)
+    endif()
+    if(_STRIP)
+        set(CMAKE_STRIP  "${_STRIP}"  CACHE FILEPATH "Strip"    FORCE)
+    endif()
+    if(_RANLIB)
+        set(CMAKE_RANLIB "${_RANLIB}" CACHE FILEPATH "Ranlib"   FORCE)
+    endif()
+    unset(_AR)
+    unset(_STRIP)
+    unset(_RANLIB)
 else()
     message(WARNING
         "[RaspberryPi4] gcc-${RPI4_GCC_VERSION} не знайдено, "

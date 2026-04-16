@@ -53,6 +53,10 @@ else()
     if(TIFF_FOUND)
         message(STATUS "[LibTiff] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
+    elseif(EXISTS "${_tiff_lib}")
+        ep_imported_library(TIFF::TIFF "${_tiff_lib}" "${_tiff_inc}")
+        message(STATUS "[LibTiff] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[LibTiff] Буде зібрано з джерел (версія ${LIBTIFF_VERSION})")
 

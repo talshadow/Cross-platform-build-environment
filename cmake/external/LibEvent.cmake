@@ -52,6 +52,11 @@ else()
         message(STATUS "[LibEvent] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # libevent::core і libevent::extra вже створено find_package
 
+    elseif(EXISTS "${_libevent_core}")
+        ep_imported_library(libevent::core  "${_libevent_core}"  "${_libevent_inc}")
+        ep_imported_library(libevent::extra "${_libevent_extra}" "${_libevent_inc}")
+        message(STATUS "[LibEvent] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[LibEvent] Буде зібрано з джерел (${LIBEVENT_VERSION})")
 

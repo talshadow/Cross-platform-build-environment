@@ -19,8 +19,8 @@ cmake_minimum_required(VERSION 3.20)
 #   INSTALL  — пакет для встановлення (напр. gcc-aarch64-linux-gnu)
 # ---------------------------------------------------------------------------
 macro(cross_toolchain_find_compiler PREFIX INSTALL)
-    find_program(_CC  "${PREFIX}-gcc")
-    find_program(_CXX "${PREFIX}-g++")
+    find_program(_CC  "${PREFIX}-gcc"  HINTS ENV PATH)
+    find_program(_CXX "${PREFIX}-g++" HINTS ENV PATH)
 
     if(NOT _CC OR NOT _CXX)
         message(FATAL_ERROR

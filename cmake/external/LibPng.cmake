@@ -43,6 +43,10 @@ else()
     if(PNG_FOUND)
         message(STATUS "[LibPng] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
+    elseif(EXISTS "${_png_lib}")
+        ep_imported_library(PNG::PNG "${_png_lib}" "${_png_inc}")
+        message(STATUS "[LibPng] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[LibPng] Буде зібрано з джерел (версія ${LIBPNG_VERSION})")
 

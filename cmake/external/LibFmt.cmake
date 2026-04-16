@@ -41,6 +41,10 @@ else()
     if(fmt_FOUND)
         message(STATUS "[LibFmt] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
+    elseif(EXISTS "${_fmt_lib}")
+        ep_imported_library(fmt::fmt "${_fmt_lib}" "${_fmt_inc}")
+        message(STATUS "[LibFmt] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[LibFmt] Буде зібрано з джерел (версія ${LIBFMT_VERSION})")
 

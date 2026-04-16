@@ -95,6 +95,19 @@ else()
         # Генеруємо meson cross-file для крос-компіляції
         _meson_generate_cross_file(_libcamera_cross_args)
 
+        # libcamera-специфічний overlay cross-файл:
+        # Пригнічує GCC 12 false-positive -Warray-bounds (hdr.cpp:119):
+        # libcamera будується з -Werror, і GCC 12 помилково генерує цей варнінг
+        # при ініціалізації std::vector<uint> через { 0 }.
+        # -I/-L шляхи до EXTERNAL_INSTALL_PREFIX вже задані в базовому cross-файлі
+        # (_meson_generate_cross_file), тому тут лише бібліотечно-специфічний прапор.
+        set(_libcamera_overlay_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-libcamera-overlay.ini")
+        file(WRITE "${_libcamera_overlay_file}"
+"[built-in options]
+cpp_args = ['-Wno-error=array-bounds']
+")
+        list(APPEND _libcamera_cross_args "--cross-file" "${_libcamera_overlay_file}")
+
         # libcamera pipeline handlers.
         # Завжди включаємо rpi/vc4 — потрібен для генерації control_ids_rpi.yaml,
         # без якого controls::rpi namespace не існує і rpicam-apps не компілюється.
@@ -110,6 +123,7 @@ else()
                 env
                     PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig
                 ${_libcamera_meson} setup
+                    --reconfigure
                     ${_libcamera_cross_args}
                     --prefix=${EXTERNAL_INSTALL_PREFIX}
                     --libdir=lib
@@ -140,8 +154,8 @@ else()
         unset(_libcamera_meson)
         unset(_libcamera_ninja)
         unset(_libcamera_cross_args)
+        unset(_libcamera_overlay_file)
         unset(_libcamera_pipelines)
-        unset(_libcamera_ep_deps)
     endif()
 endif()
 

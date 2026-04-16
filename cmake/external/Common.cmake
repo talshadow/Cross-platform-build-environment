@@ -123,11 +123,15 @@ option(USE_ORIGIN_RPATH
 # ---------------------------------------------------------------------------
 function(ep_find_scope out_var)
     if(CMAKE_SYSROOT)
-        # Крос-компіляція: тільки наш prefix та sysroot,
-        # системні шляхи хоста повністю виключені.
+        # Крос-компіляція: бібліотеки/заголовки/пакети — тільки в sysroot
+        # (через ONLY-режим, який трансформує всі шляхи через CMAKE_FIND_ROOT_PATH).
+        # Програми (ninja, python тощо) — на хості (NEVER не застосовує sysroot-prefix).
+        #
+        # CMAKE_FIND_USE_CMAKE_SYSTEM_PATH і CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH
+        # НЕ відключаємо: ONLY-режим вже ізолює пошук від хост-системи, а ці флаги
+        # потрібні щоб CMake генерував sysroot-версії системних шляхів (зокрема
+        # multi-arch підпапки /usr/lib/<triplet>/).
         set(${out_var}
-            -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
-            -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=OFF
             -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
             -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
             -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY
@@ -187,6 +191,12 @@ function(ep_cmake_args out_var)
         list(APPEND _args -DYOCTO_SDK_SYSROOT=${YOCTO_SDK_SYSROOT})
     endif()
 
+    # Make-програма (ninja/make) — передаємо явно, бо CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+    # блокує автоматичний пошук ninja у дочірніх cmake-процесах
+    if(CMAKE_MAKE_PROGRAM)
+        list(APPEND _args -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM})
+    endif()
+
     # Бінарні утиліти (важливо для крос-компіляції)
     if(CMAKE_AR)
         list(APPEND _args -DCMAKE_AR=${CMAKE_AR})
@@ -200,6 +210,14 @@ function(ep_cmake_args out_var)
     if(CMAKE_LINKER)
         list(APPEND _args -DCMAKE_LINKER=${CMAKE_LINKER})
     endif()
+
+    # Лінкерний пошуковий шлях: -L щоб лінкер знаходив наші бібліотеки транзитивно
+    # (cmake передає explicit paths для прямих залежностей, але для транзитивних
+    # залежностей shared-бібліотек лінкеру потрібен -L)
+    list(APPEND _args
+        "-DCMAKE_SHARED_LINKER_FLAGS=-L${EXTERNAL_INSTALL_PREFIX}/lib"
+        "-DCMAKE_EXE_LINKER_FLAGS=-L${EXTERNAL_INSTALL_PREFIX}/lib"
+    )
 
     # RPATH
     if(USE_ORIGIN_RPATH)
@@ -288,6 +306,16 @@ function(_ep_collect_deps out_var)
     foreach(_ep ${ARGN})
         if(TARGET ${_ep})
             list(APPEND _existing ${_ep})
+        endif()
+    endforeach()
+    set(${out_var} ${_existing} PARENT_SCOPE)
+endfunction()
+
+function(_ep_collect_deps_install out_var)
+    set(_existing "")
+    foreach(_ep ${ARGN})
+        if(TARGET ${_ep})
+            list(APPEND _existing ${_ep}-install)
         endif()
     endforeach()
     set(${out_var} ${_existing} PARENT_SCOPE)
@@ -478,13 +506,62 @@ function(_meson_generate_cross_file out_var)
         set(_mc_strip "strip")
     endif()
 
-    # Рядки sysroot та pkg-config для секції [properties]
-    set(_mc_sysroot_line    "")
-    set(_mc_pkgconfig_line  "")
+    # Рядки для секцій cross-файлу
+    set(_mc_properties_section "")
+    set(_mc_builtin_options_section "")
+
+    # [properties]: pkg_config_libdir — EXTERNAL_INSTALL_PREFIX завжди першим,
+    # щоб наші зібрані бібліотеки мали пріоритет над sysroot.
+    # При крос-компіляції meson ІГНОРУЄ PKG_CONFIG_PATH з env і використовує
+    # ВИКЛЮЧНО pkg_config_libdir з cross-файлу.
+    set(_mc_pkgconfig_paths
+        "${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig"
+        "${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig"
+    )
     if(CMAKE_SYSROOT)
-        set(_mc_sysroot_line   "sys_root = '${CMAKE_SYSROOT}'")
-        set(_mc_pkgconfig_line
-            "pkg_config_libdir = '${CMAKE_SYSROOT}/usr/lib/pkgconfig:${CMAKE_SYSROOT}/usr/share/pkgconfig'")
+        # Додаємо sysroot після наших артефактів.
+        # НЕ використовуємо sys_root — meson 1.x некоректно застосовує його:
+        # додає sysroot-префікс до -I шляхів з cpp_args замість того щоб передати
+        # --sysroot компілятору. Sysroot передаємо через [built-in options].
+        #
+        # Включаємо multiarch підпапку (/usr/lib/<triplet>/pkgconfig), якщо відома
+        # (CMAKE_LIBRARY_ARCHITECTURE задається cmake на основі виводу компілятора).
+        list(APPEND _mc_pkgconfig_paths
+            "${CMAKE_SYSROOT}/usr/lib/pkgconfig"
+            "${CMAKE_SYSROOT}/usr/share/pkgconfig"
+            "${CMAKE_SYSROOT}/lib/pkgconfig"
+        )
+        if(CMAKE_LIBRARY_ARCHITECTURE)
+            list(APPEND _mc_pkgconfig_paths
+                "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/pkgconfig"
+                "${CMAKE_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}/pkgconfig"
+            )
+        endif()
+    endif()
+    string(JOIN ":" _mc_pkgconfig_str ${_mc_pkgconfig_paths})
+    string(APPEND _mc_properties_section
+        "pkg_config_libdir = '${_mc_pkgconfig_str}'\n")
+    unset(_mc_pkgconfig_paths)
+    unset(_mc_pkgconfig_str)
+
+    # [built-in options] для ГОЛОВНОГО cross-файлу:
+    # - c_args/cpp_args: тільки --sysroot (без -I).
+    #   Meson 1.3.x не передає -I з cpp_args до compile команд коли в тому ж масиві є --sysroot.
+    #   Тому -I розміщується у ОКРЕМОМУ cross-файлі (meson-cross-paths.ini), який meson
+    #   обробляє незалежно і результат мержить. Meson merges arrays from multiple --cross-file.
+    # - c_link_args/cpp_link_args: --sysroot + -L (обидва флаги передаються коректно для лінкера).
+    if(CMAKE_SYSROOT)
+        string(APPEND _mc_builtin_options_section
+            "c_args = ['--sysroot=${CMAKE_SYSROOT}']\n"
+            "cpp_args = ['--sysroot=${CMAKE_SYSROOT}']\n"
+            "c_link_args = ['--sysroot=${CMAKE_SYSROOT}', '-L${EXTERNAL_INSTALL_PREFIX}/lib']\n"
+            "cpp_link_args = ['--sysroot=${CMAKE_SYSROOT}', '-L${EXTERNAL_INSTALL_PREFIX}/lib']\n")
+    else()
+        string(APPEND _mc_builtin_options_section
+            "c_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']\n"
+            "cpp_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']\n"
+            "c_link_args = ['-L${EXTERNAL_INSTALL_PREFIX}/lib']\n"
+            "cpp_link_args = ['-L${EXTERNAL_INSTALL_PREFIX}/lib']\n")
     endif()
 
     set(_cross_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-cross.ini")
@@ -498,14 +575,29 @@ strip = '${_mc_strip}'
 pkgconfig = 'pkg-config'
 
 [properties]
-${_mc_sysroot_line}
-${_mc_pkgconfig_line}
-
+${_mc_properties_section}
+[built-in options]
+${_mc_builtin_options_section}
 [host_machine]
 system = 'linux'
 cpu_family = '${_meson_cpu_family}'
 cpu = '${_meson_cpu_family}'
 endian = 'little'
 ")
-    set(${out_var} "--cross-file" "${_cross_file}" PARENT_SCOPE)
+
+    # При крос-компіляції з sysroot: генеруємо окремий cross-файл тільки з -I шляхами.
+    # Meson 1.3.x некоректно ігнорує -I з cpp_args коли в тому ж масиві є --sysroot.
+    # Окремий файл без --sysroot обходить цю проблему — meson appends arrays across files.
+    set(_cross_args "--cross-file" "${_cross_file}")
+    if(CMAKE_SYSROOT)
+        set(_cross_paths_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-cross-paths.ini")
+        file(WRITE "${_cross_paths_file}"
+"[built-in options]
+c_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']
+cpp_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']
+")
+        list(APPEND _cross_args "--cross-file" "${_cross_paths_file}")
+    endif()
+
+    set(${out_var} ${_cross_args} PARENT_SCOPE)
 endfunction()

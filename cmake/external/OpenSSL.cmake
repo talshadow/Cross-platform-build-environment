@@ -65,6 +65,12 @@ else()
         message(STATUS "[OpenSSL] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # find_package(OpenSSL) вже створив OpenSSL::SSL та OpenSSL::Crypto
 
+    elseif(EXISTS "${_ssl_lib3}")
+        ep_imported_library(OpenSSL::Crypto "${_crypto_lib3}" "${_ssl_inc}")
+        ep_imported_library(OpenSSL::SSL    "${_ssl_lib3}"    "${_ssl_inc}")
+        target_link_libraries(OpenSSL::SSL INTERFACE OpenSSL::Crypto)
+        message(STATUS "[OpenSSL] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[OpenSSL] Буде зібрано з джерел (версія ${OPENSSL_VERSION})")
 

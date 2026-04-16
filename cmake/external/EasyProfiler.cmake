@@ -43,6 +43,10 @@ else()
     if(easy_profiler_FOUND)
         message(STATUS "[EasyProfiler] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
+    elseif(EXISTS "${_ep_lib}")
+        ep_imported_library(easy_profiler::easy_profiler "${_ep_lib}" "${_ep_inc}")
+        message(STATUS "[EasyProfiler] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[EasyProfiler] Буде зібрано з джерел (${EASYPROFILER_VERSION})")
 

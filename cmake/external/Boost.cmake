@@ -47,6 +47,12 @@ else()
         message(STATUS "[Boost] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # find_package(Boost) вже створив Boost::headers та Boost::program_options
 
+    elseif(EXISTS "${_boost_lib_po}")
+        ep_imported_interface(Boost::headers "${_boost_inc}")
+        ep_imported_library(Boost::program_options "${_boost_lib_po}" "${_boost_inc}")
+        target_link_libraries(Boost::program_options INTERFACE Boost::headers)
+        message(STATUS "[Boost] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[Boost] Буде зібрано з джерел (версія ${BOOST_VERSION})")
 

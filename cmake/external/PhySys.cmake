@@ -43,6 +43,10 @@ else()
     if(PhysicsFS_FOUND)
         message(STATUS "[PhysicsFS] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
+    elseif(EXISTS "${_physfs_lib}")
+        ep_imported_library(PhysicsFS::PhysicsFS "${_physfs_lib}" "${_physfs_inc}")
+        message(STATUS "[PhysicsFS] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[PhysicsFS] Буде зібрано з джерел (${PHYSYS_VERSION})")
 

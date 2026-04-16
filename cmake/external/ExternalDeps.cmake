@@ -14,7 +14,7 @@
 # LibEvent    <- OpenSSL
 # LibCamera   <- LibEvent (cam утиліта)
 # LibPisp     <- LibCamera, Boost
-# RpiCamApps  <- LibCamera, Boost
+# RpiCamApps  <- LibCamera, Boost, OpenCV
 # AirSim      <- Eigen3, Rpclib
 # PhySysCpp   <- PhySys
 #
@@ -85,7 +85,7 @@ include("${_ep_dir}/LibCamera.cmake")
 if(TARGET libcamera_ep)
     _ep_collect_deps(_deps libevent_ep)
     if(_deps)
-        ExternalProject_Add_StepDependencies(libcamera_ep build ${_deps})
+        ExternalProject_Add_StepDependencies(libcamera_ep configure ${_deps})
     endif()
 endif()
 
@@ -98,10 +98,10 @@ if(TARGET libpisp_ep)
     endif()
 endif()
 
-# ── Залежить від LibCamera + Boost ──────────────────────────────────────────
+# ── Залежить від LibCamera + Boost + OpenCV ─────────────────────────────────
 include("${_ep_dir}/RpiCamApps.cmake")
 if(TARGET rpicamapps_ep)
-    _ep_collect_deps(_deps libcamera_ep boost_ep)
+    _ep_collect_deps(_deps libcamera_ep boost_ep opencv_ep)
     if(_deps)
         ExternalProject_Add_StepDependencies(rpicamapps_ep build ${_deps})
     endif()

@@ -47,6 +47,10 @@ else()
             add_library(ncnn::ncnn ALIAS ncnn)
         endif()
 
+    elseif(EXISTS "${_ncnn_lib}")
+        ep_imported_library(ncnn::ncnn "${_ncnn_lib}" "${_ncnn_inc}")
+        message(STATUS "[Ncnn] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[Ncnn] Буде зібрано з джерел (${NCNN_VERSION})")
 

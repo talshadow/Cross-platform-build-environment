@@ -27,20 +27,31 @@ set(_TOOLCHAIN_PREFIX_VAR RPI5_TOOLCHAIN_PREFIX)
 include("${CMAKE_CURRENT_LIST_DIR}/common.cmake")
 
 find_program(_RPI5_CC_VERSIONED
-    "${RPI5_TOOLCHAIN_PREFIX}-gcc-${RPI5_GCC_VERSION}")
+    "${RPI5_TOOLCHAIN_PREFIX}-gcc-${RPI5_GCC_VERSION}"
+    HINTS ENV PATH)
 
 if(_RPI5_CC_VERSIONED)
-    set(CMAKE_C_COMPILER   "${RPI5_TOOLCHAIN_PREFIX}-gcc-${RPI5_GCC_VERSION}"
-        CACHE FILEPATH "C compiler" FORCE)
-    set(CMAKE_CXX_COMPILER "${RPI5_TOOLCHAIN_PREFIX}-g++-${RPI5_GCC_VERSION}"
-        CACHE FILEPATH "C++ compiler" FORCE)
+    find_program(_RPI5_CXX_VERSIONED
+        "${RPI5_TOOLCHAIN_PREFIX}-g++-${RPI5_GCC_VERSION}"
+        HINTS ENV PATH)
+    set(CMAKE_C_COMPILER   "${_RPI5_CC_VERSIONED}"  CACHE FILEPATH "C compiler"   FORCE)
+    set(CMAKE_CXX_COMPILER "${_RPI5_CXX_VERSIONED}" CACHE FILEPATH "C++ compiler" FORCE)
+    unset(_RPI5_CXX_VERSIONED)
     find_program(_AR     "${RPI5_TOOLCHAIN_PREFIX}-ar")
     find_program(_STRIP  "${RPI5_TOOLCHAIN_PREFIX}-strip")
     find_program(_RANLIB "${RPI5_TOOLCHAIN_PREFIX}-ranlib")
-    if(_AR)     set(CMAKE_AR     "${_AR}"     CACHE FILEPATH "Archiver" FORCE) endif()
-    if(_STRIP)  set(CMAKE_STRIP  "${_STRIP}"  CACHE FILEPATH "Strip"    FORCE) endif()
-    if(_RANLIB) set(CMAKE_RANLIB "${_RANLIB}" CACHE FILEPATH "Ranlib"   FORCE) endif()
-    unset(_AR) unset(_STRIP) unset(_RANLIB)
+    if(_AR)
+        set(CMAKE_AR     "${_AR}"     CACHE FILEPATH "Archiver" FORCE)
+    endif()
+    if(_STRIP)
+        set(CMAKE_STRIP  "${_STRIP}"  CACHE FILEPATH "Strip"    FORCE)
+    endif()
+    if(_RANLIB)
+        set(CMAKE_RANLIB "${_RANLIB}" CACHE FILEPATH "Ranlib"   FORCE)
+    endif()
+    unset(_AR)
+    unset(_STRIP)
+    unset(_RANLIB)
 else()
     message(WARNING
         "[RaspberryPi5] gcc-${RPI5_GCC_VERSION} не знайдено, "

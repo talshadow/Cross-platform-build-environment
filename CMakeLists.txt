@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(SupportRaspberryPI
+project(Cross-platform-build-environment
     VERSION     1.0.0
     DESCRIPTION "Cross-platform CMake build support for Raspberry Pi and Yocto Linux"
     LANGUAGES   C CXX

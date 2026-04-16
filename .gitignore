@@ -4,6 +4,7 @@ CMakeUserPresets.json
 
 # Editors
 .vscode/
+.qtcreator/
 .idea/
 *.swp
 *.swo

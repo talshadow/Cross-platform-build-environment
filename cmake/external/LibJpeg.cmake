@@ -48,6 +48,11 @@ else()
     if(JPEG_FOUND)
         message(STATUS "[LibJpeg] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
+    elseif(EXISTS "${_jpeg_lib}")
+        ep_imported_library(JPEG::JPEG           "${_jpeg_lib}"      "${_jpeg_inc}")
+        ep_imported_library(TurboJPEG::TurboJPEG "${_turbojpeg_lib}" "${_jpeg_inc}")
+        message(STATUS "[LibJpeg] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[LibJpeg] Буде зібрано з джерел (libjpeg-turbo ${LIBJPEG_VERSION})")
 

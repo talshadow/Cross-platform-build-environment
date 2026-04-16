@@ -48,6 +48,10 @@ else()
         message(STATUS "[GeographicLib] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # GeographicLib::GeographicLib вже створено find_package
 
+    elseif(EXISTS "${_geolib_lib}")
+        ep_imported_library(GeographicLib::GeographicLib "${_geolib_lib}" "${_geolib_inc}")
+        message(STATUS "[GeographicLib] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[GeographicLib] Буде зібрано з джерел (${GEOGRAPHICLIB_VERSION})")
 

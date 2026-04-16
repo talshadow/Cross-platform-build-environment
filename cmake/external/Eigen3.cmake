@@ -49,6 +49,10 @@ else()
         message(STATUS "[Eigen3] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # Eigen3::Eigen вже створено find_package
 
+    elseif(IS_DIRECTORY "${_eigen_inc}")
+        ep_imported_interface(Eigen3::Eigen "${_eigen_inc}")
+        message(STATUS "[Eigen3] Знайдено заголовки у ${EXTERNAL_INSTALL_PREFIX}")
+
     else()
         message(STATUS "[Eigen3] Буде встановлено з джерел (${EIGEN3_VERSION})")
 

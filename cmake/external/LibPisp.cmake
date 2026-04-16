@@ -110,6 +110,7 @@ else()
                     PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig
                     BOOST_ROOT=${EXTERNAL_INSTALL_PREFIX}
                 ${_libpisp_meson} setup
+                    --reconfigure
                     ${_libpisp_cross_args}
                     --prefix=${EXTERNAL_INSTALL_PREFIX}
                     --libdir=lib
