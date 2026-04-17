@@ -95,18 +95,43 @@ else()
         # Генеруємо meson cross-file для крос-компіляції
         _meson_generate_cross_file(_libcamera_cross_args)
 
-        # libcamera-специфічний overlay cross-файл:
-        # Пригнічує GCC 12 false-positive -Warray-bounds (hdr.cpp:119):
+        # libcamera-специфічний overlay cross-файл.
+        # ВАЖЛИВО: meson використовує останній --cross-file для [built-in options],
+        # тому overlay МУСИТЬ містити ВСІ cpp_args (не тільки libcamera-специфічні).
+        # MESON_CROSS_C_ARGS/MESON_CROSS_LINK_ARGS виставляються _meson_generate_cross_file.
+        #
+        # Додатковий прапор: -Wno-error=array-bounds
+        # Пригнічує GCC 12 false-positive (hdr.cpp:119):
         # libcamera будується з -Werror, і GCC 12 помилково генерує цей варнінг
         # при ініціалізації std::vector<uint> через { 0 }.
-        # -I/-L шляхи до EXTERNAL_INSTALL_PREFIX вже задані в базовому cross-файлі
-        # (_meson_generate_cross_file), тому тут лише бібліотечно-специфічний прапор.
         set(_libcamera_overlay_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-libcamera-overlay.ini")
-        file(WRITE "${_libcamera_overlay_file}"
+        if(MESON_CROSS_C_ARGS)
+            # Крос-компіляція: повний набір cpp_args + libcamera-специфічний прапор
+            set(_overlay_cpp_args "${MESON_CROSS_C_ARGS}, '-Wno-error=array-bounds'")
+            set(_overlay_link_args "${MESON_CROSS_LINK_ARGS}")
+            file(WRITE "${_libcamera_overlay_file}"
+"[built-in options]
+cpp_args = [${_overlay_cpp_args}]
+c_args = [${MESON_CROSS_C_ARGS}]
+c_link_args = [${_overlay_link_args}]
+cpp_link_args = [${_overlay_link_args}]
+")
+            unset(_overlay_cpp_args)
+            unset(_overlay_link_args)
+        else()
+            # Нативна збірка: тільки libcamera-специфічний прапор
+            file(WRITE "${_libcamera_overlay_file}"
 "[built-in options]
 cpp_args = ['-Wno-error=array-bounds']
 ")
-        list(APPEND _libcamera_cross_args "--cross-file" "${_libcamera_overlay_file}")
+        endif()
+        # При нативній збірці використовуємо --native-file щоб не активувати
+        # cross-compilation mode у meson (--cross-file завжди його вмикає).
+        if(CMAKE_CROSSCOMPILING)
+            list(APPEND _libcamera_cross_args "--cross-file"   "${_libcamera_overlay_file}")
+        else()
+            list(APPEND _libcamera_cross_args "--native-file"  "${_libcamera_overlay_file}")
+        endif()
 
         # libcamera pipeline handlers.
         # Завжди включаємо rpi/vc4 — потрібен для генерації control_ids_rpi.yaml,
@@ -150,6 +175,8 @@ cpp_args = ['-Wno-error=array-bounds']
 
         ep_imported_library_from_ep(
             libcamera::libcamera libcamera_ep "${_libcamera_lib}" "${_libcamera_inc}")
+
+        ep_prestamp_git(libcamera_ep "${EP_SOURCES_DIR}/libcamera" "${LIBCAMERA_VERSION}")
 
         unset(_libcamera_meson)
         unset(_libcamera_ninja)

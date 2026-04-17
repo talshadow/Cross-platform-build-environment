@@ -180,6 +180,16 @@ function(ep_cmake_args out_var)
         list(APPEND _args -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER})
     endif()
 
+    # RPi toolchain prefix — критично для sub-projects: toolchain file
+    # перечитується і cross_toolchain_find_compiler з FORCE перекриває
+    # CMAKE_C/CXX_COMPILER якщо PREFIX не переданий явно.
+    foreach(_rpi_prefix_var RPI4_TOOLCHAIN_PREFIX RPI4_GCC_VERSION
+                            RPI5_TOOLCHAIN_PREFIX RPI5_GCC_VERSION)
+        if(DEFINED ${_rpi_prefix_var})
+            list(APPEND _args "-D${_rpi_prefix_var}=${${_rpi_prefix_var}}")
+        endif()
+    endforeach()
+
     # Sysroot
     if(CMAKE_SYSROOT)
         list(APPEND _args -DCMAKE_SYSROOT=${CMAKE_SYSROOT})
@@ -211,12 +221,26 @@ function(ep_cmake_args out_var)
         list(APPEND _args -DCMAKE_LINKER=${CMAKE_LINKER})
     endif()
 
-    # Лінкерний пошуковий шлях: -L щоб лінкер знаходив наші бібліотеки транзитивно
-    # (cmake передає explicit paths для прямих залежностей, але для транзитивних
-    # залежностей shared-бібліотек лінкеру потрібен -L)
+    # Лінкерний пошуковий шлях: -L для явних залежностей + -rpath-link для
+    # транзитивних DT_NEEDED.  GNU ld НЕ використовує -L для DT_NEEDED scanning;
+    # натомість він шукає тільки в -rpath-link → -rpath → системних шляхах.
+    # Тому обидві директорії (наш prefix і sysroot multiarch) потрібні в rpath-link.
+    # Додатково передаємо батьківські CMAKE_*_LINKER_FLAGS щоб зберегти прапори
+    # встановлені toolchain (напр. multiarch -L шляхи для Debian sysroot).
+    set(_ep_linker_prefix
+        "-L${EXTERNAL_INSTALL_PREFIX}/lib"
+        # rpath-link: наші артефакти (libtiff, libpng, libjpeg тощо)
+        "-Wl,-rpath-link,${EXTERNAL_INSTALL_PREFIX}/lib")
+    string(JOIN " " _ep_linker_prefix ${_ep_linker_prefix})
+    if(RPI_SYSROOT_MULTIARCH)
+        # rpath-link: sysroot multiarch (libz.so.1, libpthread.so тощо)
+        string(APPEND _ep_linker_prefix
+            " -Wl,-rpath-link,${CMAKE_SYSROOT}/lib/${RPI_SYSROOT_MULTIARCH}"
+            " -Wl,-rpath-link,${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}")
+    endif()
     list(APPEND _args
-        "-DCMAKE_SHARED_LINKER_FLAGS=-L${EXTERNAL_INSTALL_PREFIX}/lib"
-        "-DCMAKE_EXE_LINKER_FLAGS=-L${EXTERNAL_INSTALL_PREFIX}/lib"
+        "-DCMAKE_SHARED_LINKER_FLAGS=${_ep_linker_prefix} ${CMAKE_SHARED_LINKER_FLAGS}"
+        "-DCMAKE_EXE_LINKER_FLAGS=${_ep_linker_prefix} ${CMAKE_EXE_LINKER_FLAGS}"
     )
 
     # RPATH
@@ -464,6 +488,55 @@ function(_ep_require_meson)
 endfunction()
 
 # ---------------------------------------------------------------------------
+# ep_prestamp_git(<ep_name> <source_dir> <git_tag>)
+#
+# Якщо SOURCE_DIR вже містить git-репозиторій з потрібним тегом/комітом,
+# попередньо створює download stamp щоб ExternalProject пропустив git fetch
+# при наступній збірці після видалення build-директорії (зі збереженням сорців).
+#
+# Без цього ExternalProject завжди виконує git fetch навіть якщо репозиторій
+# вже актуальний, що уповільнює збірку та потребує мережі.
+#
+# Виклик: після ExternalProject_Add у кожному Lib*.cmake
+#   ep_prestamp_git(libcamera_ep "${EP_SOURCES_DIR}/libcamera" "v0.5.2+rpt20250903")
+#
+# Ідемпотентна: якщо stamp вже існує — нічого не робить.
+# ---------------------------------------------------------------------------
+function(ep_prestamp_git ep_name source_dir git_tag)
+    if(NOT EXISTS "${source_dir}/.git")
+        return()
+    endif()
+    # Перевіряємо поточний тег/коміт через git describe
+    execute_process(
+        COMMAND git describe --tags --exact-match HEAD
+        WORKING_DIRECTORY "${source_dir}"
+        OUTPUT_VARIABLE _current_tag
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    # Також перевіряємо через git rev-parse (для тегів що не є annotated)
+    if(NOT _current_tag STREQUAL git_tag)
+        execute_process(
+            COMMAND git log -1 --format=%D HEAD
+            WORKING_DIRECTORY "${source_dir}"
+            OUTPUT_VARIABLE _current_refs
+            ERROR_QUIET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        if(NOT _current_refs MATCHES "${git_tag}")
+            return()  # Не той тег — нехай ExternalProject оновить
+        endif()
+    endif()
+    set(_stamp_dir "${CMAKE_BINARY_DIR}/${ep_name}-prefix/src/${ep_name}-stamp")
+    set(_dl_stamp  "${_stamp_dir}/${ep_name}-download")
+    if(NOT EXISTS "${_dl_stamp}")
+        file(MAKE_DIRECTORY "${_stamp_dir}")
+        file(WRITE "${_dl_stamp}" "")
+        message(STATUS "[${ep_name}] Джерела вже на тегу ${git_tag} — download stamp (пропуск fetch)")
+    endif()
+endfunction()
+
+# ---------------------------------------------------------------------------
 # _meson_generate_cross_file(<out_var>)
 #
 # Генерує файл meson-cross.ini для крос-компіляції (якщо CMAKE_CROSSCOMPILING).
@@ -585,18 +658,75 @@ cpu = '${_meson_cpu_family}'
 endian = 'little'
 ")
 
-    # При крос-компіляції з sysroot: генеруємо окремий cross-файл тільки з -I шляхами.
-    # Meson 1.3.x некоректно ігнорує -I з cpp_args коли в тому ж масиві є --sysroot.
-    # Окремий файл без --sysroot обходить цю проблему — meson appends arrays across files.
+    # При крос-компіляції з sysroot: генеруємо ДРУГИЙ cross-файл (meson-cross-paths.ini).
+    #
+    # Поведінка meson з кількома --cross-file (перевірено на 1.10.x):
+    #   Файли обробляються від останнього до першого; перший знайдений ключ виграє.
+    #   Тобто ОСТАННІЙ вказаний файл має пріоритет над попередніми.
+    #   Для list-типів (c_args тощо) — НЕ мержить, останній файл перезаписує.
+    #
+    # Тому paths-файл (останній) мусить містити ВСЕ: --sysroot, -I, -L та multiarch.
+    # Головний cross-файл (перший) містить --sysroot/-L лише як fallback для non-paths
+    # варіантів (нативна збірка без CMAKE_SYSROOT — тоді paths-файл не генерується).
     set(_cross_args "--cross-file" "${_cross_file}")
     if(CMAKE_SYSROOT)
         set(_cross_paths_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-cross-paths.ini")
+
+        # c_args: --sysroot обов'язковий (інакше GCC використовує вбудований sysroot CT-NG)
+        # + наші артефакти -I
+        set(_mcp_c_args "'--sysroot=${CMAKE_SYSROOT}', '-I${EXTERNAL_INSTALL_PREFIX}/include'")
+        # c_link_args: --sysroot + наші артефакти -L + -rpath-link для DT_NEEDED
+        # GNU ld не використовує -L для DT_NEEDED scanning → потрібен -rpath-link
+        # для нашого prefix щоб лінкер знаходив libtiff.so.6, libpng.so тощо.
+        set(_mcp_link_args
+            "'--sysroot=${CMAKE_SYSROOT}', '-L${EXTERNAL_INSTALL_PREFIX}/lib', '-Wl,-rpath-link,${EXTERNAL_INSTALL_PREFIX}/lib'")
+
+        # CT-NG toolchain: коли multiarch-триплет sysroot відрізняється від
+        # toolchain prefix, потрібні додаткові include/lib шляхи.
+        # RPI_SYSROOT_MULTIARCH встановлюється тільки в цьому випадку →
+        # Ubuntu build (де триплети збігаються) цього блоку не виконує.
+        if(RPI_SYSROOT_MULTIARCH)
+            # CT-NG: toolchain prefix відрізняється від multiarch-триплета sysroot.
+            # -isystem: GCC не знає про /usr/include/<multiarch>/ в sysroot автоматично.
+            # -B: GCC-driver знаходить startup-файли (crt1.o, crti.o) у multiarch-директорії.
+            #     Без цього meson link-тести падають: "cannot find crt1.o".
+            # -L: лінкер знаходить libc.so.6 тощо.
+            # -Wl,-rpath-link: лінкер знаходить транзитивні залежності .so (libz → libtiff).
+            #   -L дозволяє пряме лінкування, але -rpath-link потрібен для DT_NEEDED
+            #   при крос-компіляції де рантайм шляхи відрізняються.
+            string(APPEND _mcp_c_args
+                ", '-isystem${CMAKE_SYSROOT}/usr/include/${RPI_SYSROOT_MULTIARCH}'")
+            string(APPEND _mcp_link_args
+                ", '-B${CMAKE_SYSROOT}/lib/${RPI_SYSROOT_MULTIARCH}'"
+                ", '-B${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}'"
+                ", '-L${CMAKE_SYSROOT}/lib/${RPI_SYSROOT_MULTIARCH}'"
+                ", '-L${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}'"
+                ", '-Wl,-rpath-link,${CMAKE_SYSROOT}/lib/${RPI_SYSROOT_MULTIARCH}'"
+                ", '-Wl,-rpath-link,${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}'")
+        endif()
+
         file(WRITE "${_cross_paths_file}"
 "[built-in options]
-c_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']
-cpp_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']
+c_args = [${_mcp_c_args}]
+cpp_args = [${_mcp_c_args}]
+c_link_args = [${_mcp_link_args}]
+cpp_link_args = [${_mcp_link_args}]
 ")
         list(APPEND _cross_args "--cross-file" "${_cross_paths_file}")
+
+        # Виставляємо рядки аргументів у PARENT_SCOPE для використання в overlay-файлах.
+        # Бібліотека може мати свій overlay з додатковими cpp_args (напр. -Wno-error=...).
+        # Щоб overlay не перезаписав --sysroot/-I/-L, він мусить містити ВСІ flags.
+        # Ці змінні дозволяють будувати overlay з повним набором флагів.
+        set(MESON_CROSS_C_ARGS     "${_mcp_c_args}"    PARENT_SCOPE)
+        set(MESON_CROSS_LINK_ARGS  "${_mcp_link_args}" PARENT_SCOPE)
+
+        unset(_mcp_c_args)
+        unset(_mcp_link_args)
+    else()
+        # Без sysroot — очищаємо (нативна збірка)
+        set(MESON_CROSS_C_ARGS    "" PARENT_SCOPE)
+        set(MESON_CROSS_LINK_ARGS "" PARENT_SCOPE)
     endif()
 
     set(${out_var} ${_cross_args} PARENT_SCOPE)

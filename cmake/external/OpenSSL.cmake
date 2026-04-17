@@ -131,6 +131,13 @@ else()
             DOC "Make для збірки OpenSSL: make/gmake (Linux), mingw32-make (MinGW), nmake (MSVC). Ninja не підтримується.")
         message(STATUS "[OpenSSL] Make: ${_ssl_make}")
 
+        # OpenSSL Configure записує компілятор в Makefile за іменем (без шляху).
+        # Якщо cross-compiler не в системному PATH (напр. CT-NG у ~/x-tools/),
+        # make не знайде його.  Prepend директорію компілятора до PATH для всіх
+        # кроків збірки OpenSSL.  Якщо вже є в PATH — дублікат нешкідливий.
+        get_filename_component(_ssl_cc_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+        set(_ssl_env ${CMAKE_COMMAND} -E env "PATH=${_ssl_cc_dir}:$ENV{PATH}")
+
         # ── NASM (тільки x86/x86_64 нативна збірка) ──────────────────────
         # OpenSSL використовує NASM для AES-NI/SHA-NI оптимізацій на x86_64.
         # Якщо NASM відсутній — OpenSSL автоматично перемикається на gas backend
@@ -177,6 +184,23 @@ else()
 
         if(CMAKE_SYSROOT)
             list(APPEND _ssl_configure_cmd "--sysroot=${CMAKE_SYSROOT}")
+            # CT-NG toolchain: multiarch-триплет sysroot відрізняється від
+            # toolchain prefix → компілятор не знає про /usr/include/<multiarch>/.
+            # OpenSSL збирається через make і не читає CMAKE_C_FLAGS_INIT,
+            # тому передаємо шляхи явно через аргументи Configure.
+            if(RPI_SYSROOT_MULTIARCH)
+                # CT-NG: триплет toolchain відрізняється від multiarch-триплета sysroot.
+                # OpenSSL Configure передає ці прапори компілятору через Makefile.
+                # -B: GCC-driver знаходить startup-файли (crt1.o, crti.o)
+                # -isystem: multiarch include-директорія sysroot
+                # -L: лінкер знаходить libc.so.6 та інші розділені бібліотеки
+                list(APPEND _ssl_configure_cmd
+                    "-B${CMAKE_SYSROOT}/lib/${RPI_SYSROOT_MULTIARCH}"
+                    "-B${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}"
+                    "-isystem${CMAKE_SYSROOT}/usr/include/${RPI_SYSROOT_MULTIARCH}"
+                    "-L${CMAKE_SYSROOT}/lib/${RPI_SYSROOT_MULTIARCH}"
+                    "-L${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}")
+            endif()
         endif()
 
         ExternalProject_Add(openssl_ep
@@ -184,11 +208,10 @@ else()
             GIT_TAG          "openssl-${OPENSSL_VERSION}"
             GIT_SHALLOW      ON
             SOURCE_DIR       "${EP_SOURCES_DIR}/openssl"
-            CONFIGURE_COMMAND ${_ssl_configure_cmd}
-            BUILD_COMMAND     ${_ssl_make} -j${_EP_NPROC}
+            CONFIGURE_COMMAND ${_ssl_env} ${_ssl_configure_cmd}
+            BUILD_COMMAND     ${_ssl_env} ${_ssl_make} -j${_EP_NPROC}
             # install_sw: тільки бібліотеки/заголовки, без man-сторінок
-            INSTALL_COMMAND   ${_ssl_make} install_sw
-            BUILD_IN_SOURCE   ON
+            INSTALL_COMMAND   ${_ssl_env} ${_ssl_make} install_sw
             # Тільки версовані файли — симлінки (.so) не є byproducts для Ninja
             BUILD_BYPRODUCTS
                 "${_ssl_lib3}"
@@ -202,6 +225,8 @@ else()
         ep_imported_library_from_ep(OpenSSL::Crypto openssl_ep "${_crypto_lib3}" "${_ssl_inc}")
         ep_imported_library_from_ep(OpenSSL::SSL    openssl_ep "${_ssl_lib3}"    "${_ssl_inc}")
         target_link_libraries(OpenSSL::SSL INTERFACE OpenSSL::Crypto)
+
+        ep_prestamp_git(openssl_ep "${EP_SOURCES_DIR}/openssl" "openssl-${OPENSSL_VERSION}")
 
         unset(_ssl_make)
     endif()

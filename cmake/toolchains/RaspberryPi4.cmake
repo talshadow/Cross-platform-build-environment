@@ -86,6 +86,118 @@ if(RPI_SYSROOT)
     set(CMAKE_SYSROOT        "${RPI_SYSROOT}")
     set(CMAKE_FIND_ROOT_PATH "${RPI_SYSROOT}")
     cross_toolchain_setup_sysroot()
+
+    # Debian multiarch sysroot (RPi OS): бібліотеки лежать у
+    # lib/aarch64-linux-gnu/, а не в lib/ як очікує Arch cross-compiler.
+    # Додаємо ці шляхи явно щоб лінкер знаходив libc.so.6 тощо.
+    #
+    # ВАЖЛИВО: multiarch-триплет у sysroot може відрізнятися від префіксу
+    # toolchain. Наприклад, CT-NG toolchain з префіксом aarch64-unknown-linux-gnu
+    # може цілитися в Debian sysroot, де бібліотеки лежать у aarch64-linux-gnu/.
+    # Автовизначаємо реальний триплет по наявності директорії у sysroot.
+    if(IS_DIRECTORY "${RPI_SYSROOT}/lib/${RPI4_TOOLCHAIN_PREFIX}")
+        set(_SYSROOT_MULTIARCH "${RPI4_TOOLCHAIN_PREFIX}")
+    else()
+        foreach(_triple "aarch64-linux-gnu" "aarch64-linux-gnueabi")
+            if(IS_DIRECTORY "${RPI_SYSROOT}/lib/${_triple}")
+                set(_SYSROOT_MULTIARCH "${_triple}")
+                break()
+            endif()
+        endforeach()
+        if(NOT _SYSROOT_MULTIARCH)
+            set(_SYSROOT_MULTIARCH "${RPI4_TOOLCHAIN_PREFIX}")
+            message(WARNING
+                "[RaspberryPi4] Не вдалося визначити multiarch-триплет sysroot, "
+                "використовується ${_SYSROOT_MULTIARCH}")
+        else()
+            message(STATUS
+                "[RaspberryPi4] Sysroot multiarch: ${_SYSROOT_MULTIARCH} "
+                "(toolchain prefix: ${RPI4_TOOLCHAIN_PREFIX})")
+        endif()
+    endif()
+
+    set(_MULTIARCH_LIB "${RPI_SYSROOT}/lib/${_SYSROOT_MULTIARCH}")
+    set(_MULTIARCH_USR "${RPI_SYSROOT}/usr/lib/${_SYSROOT_MULTIARCH}")
+
+    # -L: лінкер знаходить libc.so.6 та інші розділені бібліотеки
+    foreach(_flags_var CMAKE_EXE_LINKER_FLAGS_INIT
+                       CMAKE_SHARED_LINKER_FLAGS_INIT
+                       CMAKE_MODULE_LINKER_FLAGS_INIT)
+        set(${_flags_var}
+            "-L${_MULTIARCH_LIB} -L${_MULTIARCH_USR} ${${_flags_var}}"
+            CACHE INTERNAL "")
+    endforeach()
+
+    # Наступні прапори потрібні лише коли триплет toolchain відрізняється від
+    # multiarch-триплета sysroot (напр. CT-NG aarch64-unknown-linux-gnu →
+    # Debian sysroot aarch64-linux-gnu).  Коли вони збігаються (стандартний
+    # Ubuntu cross-compiler), GCC вже знає ці шляхи автоматично.
+    if(NOT _SYSROOT_MULTIARCH STREQUAL RPI4_TOOLCHAIN_PREFIX)
+        # -B: GCC-driver знаходить startup-файли (crt1.o, crti.o)
+        # -isystem: multiarch include-директорія sysroot (bits/wordsize.h тощо).
+        # CT-NG з триплетом aarch64-unknown-linux-gnu не знає про
+        # /usr/include/aarch64-linux-gnu/ у sysroot автоматично.
+        set(_multiarch_extra
+            " -B${_MULTIARCH_LIB} -B${_MULTIARCH_USR}"
+            " -isystem${RPI_SYSROOT}/usr/include/${_SYSROOT_MULTIARCH}")
+        string(CONCAT _multiarch_extra ${_multiarch_extra})
+        foreach(_flags_var CMAKE_C_FLAGS_INIT CMAKE_CXX_FLAGS_INIT)
+            set(${_flags_var}
+                "${${_flags_var}}${_multiarch_extra}"
+                CACHE INTERNAL "")
+        endforeach()
+        unset(_multiarch_extra)
+
+        # Виставляємо CACHE-змінну для не-cmake sub-builds (OpenSSL make, meson):
+        # вони не читають CMAKE_C_FLAGS_INIT, тому потребують явної передачі шляхів.
+        # Змінна встановлюється ТІЛЬКИ коли триплети різняться — Ubuntu build
+        # (де вони збігаються) цю змінну не отримує, поведінка залишається незмінною.
+        set(RPI_SYSROOT_MULTIARCH "${_SYSROOT_MULTIARCH}" CACHE INTERNAL
+            "Multiarch triple sysroot (відмінний від toolchain prefix)")
+    endif()
+
+    unset(_MULTIARCH_LIB)
+    unset(_MULTIARCH_USR)
+
+    # Коли host cross-compiler новіший за GCC у sysroot (напр. Arch GCC 15 +
+    # RPi OS sysroot з GCC 12/glibc 2.36), його libstdc++ потребує символів
+    # GLIBC_2.38+, яких немає у sysroot.  Використовуємо -B щоб GCC шукав
+    # libstdc++ / libgcc_s у відповідному каталозі GCC із самого sysroot.
+    #
+    # УВАГА: -B також перенаправляє GCC-internal headers (arm_neon.h тощо) на
+    # версію з sysroot, яка несумісна з builtins host compiler.
+    # Виправлення: отримуємо include-dir host GCC і додаємо його через -I
+    # (шукається РАНІШЕ ніж -B include dir), щоб arm_neon.h host GCC мав пріоритет.
+    file(GLOB _SYSROOT_GCC_DIRS
+        "${RPI_SYSROOT}/usr/lib/gcc/${_SYSROOT_MULTIARCH}/[0-9]*")
+    if(_SYSROOT_GCC_DIRS)
+        list(SORT _SYSROOT_GCC_DIRS ORDER DESCENDING)
+        list(GET _SYSROOT_GCC_DIRS 0 _SYSROOT_GCC_DIR)
+
+        # Отримуємо власний include-dir host cross-compiler
+        execute_process(
+            COMMAND "${CMAKE_C_COMPILER}" -print-file-name=include
+            OUTPUT_VARIABLE _HOST_GCC_INCLUDE
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+
+        foreach(_flags_var CMAKE_C_FLAGS_INIT CMAKE_CXX_FLAGS_INIT)
+            set(_extra "")
+            # -I host include: пріоритет над -B sysroot include для arm_neon.h тощо
+            if(_HOST_GCC_INCLUDE AND IS_DIRECTORY "${_HOST_GCC_INCLUDE}")
+                string(APPEND _extra " -I${_HOST_GCC_INCLUDE}")
+            endif()
+            set(${_flags_var}
+                "${${_flags_var}} -B${_SYSROOT_GCC_DIR}${_extra}"
+                CACHE INTERNAL "")
+        endforeach()
+
+        unset(_HOST_GCC_INCLUDE)
+        unset(_SYSROOT_GCC_DIR)
+        unset(_extra)
+    endif()
+    unset(_SYSROOT_GCC_DIRS)
+    unset(_SYSROOT_MULTIARCH)
 else()
     message(STATUS
         "[RaspberryPi4] Збірка без sysroot. "

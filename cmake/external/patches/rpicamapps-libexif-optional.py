@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-Patch rpicam-apps/image/jpeg.cpp to make libexif optional.
+Patch rpicam-apps to make libexif optional.
 
-image/meson.build already declares libexif with `required: false`, but jpeg.cpp
-unconditionally includes <libexif/exif-data.h> and uses ExifData types throughout.
-This patch guards all libexif-specific code with HAVE_LIBEXIF (derived from
-__has_include), so the file compiles with or without libexif headers present:
+In rpicam-apps v1.9.1+ image/meson.build declares libexif with required: true,
+and jpeg.cpp unconditionally includes <libexif/exif-data.h> throughout.
+
+This patch:
+1. Changes image/meson.build: required: true -> required: false for libexif.
+2. Guards all libexif-specific code in jpeg.cpp with HAVE_LIBEXIF (derived from
+   __has_include), so the file compiles with or without libexif headers present:
 
   HAVE_LIBEXIF=1  ->  full JPEG+EXIF save (original behaviour)
   HAVE_LIBEXIF=0  ->  JPEG save without EXIF metadata
@@ -21,7 +24,30 @@ if len(sys.argv) != 2:
     print("Usage: rpicamapps-libexif-optional.py <source_dir>", file=sys.stderr)
     sys.exit(1)
 
-path = sys.argv[1] + "/image/jpeg.cpp"
+source_dir = sys.argv[1]
+
+# ── 0. Patch image/meson.build: make libexif not required ────────────────────
+meson_path = source_dir + "/image/meson.build"
+with open(meson_path, "r") as f:
+    meson_src = f.read()
+
+if "dependency('libexif', required : false)" in meson_src:
+    print(f"Already patched: {meson_path}")
+else:
+    meson_src = meson_src.replace(
+        "dependency('libexif', required : true)",
+        "dependency('libexif', required : false)",
+    )
+    # Also handle older style without spaces around :
+    meson_src = meson_src.replace(
+        "dependency('libexif', required:true)",
+        "dependency('libexif', required : false)",
+    )
+    with open(meson_path, "w") as f:
+        f.write(meson_src)
+    print(f"Patched: {meson_path}")
+
+path = source_dir + "/image/jpeg.cpp"
 
 with open(path, "r") as f:
     src = f.read()

@@ -43,6 +43,10 @@ ctest --preset ubuntu2404-debug --output-on-failure
 # RPi — через Docker (не потрібен фізичний RPi)
 ./scripts/get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
 
+# З додатковими пакетами (напр. для libopencv, libboost тощо)
+./scripts/get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot \
+    --extra-packages "libopencv-dev,libboost-all-dev"
+
 # RPi — з образу .img
 sudo ./scripts/get-sysroot-rpi.sh --method image --image rpi.img.xz --dest /srv/rpi4-sysroot
 
@@ -59,7 +63,7 @@ source /opt/poky/<ver>/environment-setup-<target>-poky-linux
 ```
 cmake/toolchains/   — toolchain файли для кожної платформи
 cmake/modules/      — CompilerWarnings, Sanitizers, CrossCompileHelpers, GitVersion, StripDebug, BinaryDeps
-cmake/external/     — сторонні бібліотеки через ExternalProject (22 бібліотеки; див. spec-external.md)
+cmake/external/     — сторонні бібліотеки через ExternalProject (23 бібліотеки; див. spec-external.md)
 cmake/SuperBuild.cmake — superbuild режим
 scripts/            — install-toolchains, get-sysroot-*, sync-sysroot, build, deploy
 docs/               — overview.md, toolchains.md, getting-started.md
@@ -89,7 +93,7 @@ tests/              — тести GTest (CMakeLists.txt-заглушка)
 | Змінна | Файл | Призначення |
 |---|---|---|
 | `RPI_SYSROOT` | RaspberryPi*.cmake | Шлях до sysroot RPi |
-| `RPI<N>_TOOLCHAIN_PREFIX` | RaspberryPi*.cmake | Префікс компілятора |
+| `RPI<N>_TOOLCHAIN_PREFIX` | RaspberryPi*.cmake | Префікс компілятора (за замовч. `aarch64-linux-gnu`; для CT-NG toolchain може бути `aarch64-unknown-linux-gnu` — multiarch-триплет sysroot визначається автоматично) |
 | `YOCTO_SDK_SYSROOT` | Yocto.cmake | Перевизначення target sysroot |
 | `UBUNTU200<4>_GCC_VERSION` | Ubuntu*.cmake | Версія GCC (9/10 або 13/14) |
 | `CLANG_VERSION` | Clang.cmake | Версія Clang (напр. `18`; порожньо = системний) |

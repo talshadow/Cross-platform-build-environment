@@ -232,6 +232,11 @@ else()
 
         # Placeholder imported targets з майбутніми шляхами
         _ocv_make_imported_targets(opencv_ep)
+
+        ep_prestamp_git(opencv_ep "${EP_SOURCES_DIR}/opencv" "${OPENCV_VERSION}")
+        if(OPENCV_ENABLE_CONTRIB)
+            ep_prestamp_git(opencv_contrib_ep "${EP_SOURCES_DIR}/opencv_contrib" "${OPENCV_VERSION}")
+        endif()
     endif()
 endif()
 

@@ -131,6 +131,8 @@ else()
         ep_imported_library_from_ep(
             libpisp::libpisp libpisp_ep "${_libpisp_lib}" "${_libpisp_inc}")
 
+        ep_prestamp_git(libpisp_ep "${EP_SOURCES_DIR}/libpisp" "${LIBPISP_VERSION}")
+
         unset(_libpisp_meson)
         unset(_libpisp_ninja)
         unset(_libpisp_cross_args)

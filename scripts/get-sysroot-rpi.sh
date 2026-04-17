@@ -33,6 +33,7 @@ RPI_HOST=""
 RPI_USER="pi"
 RPI_PORT="22"
 RPI_KEY=""
+EXTRA_PACKAGES=""
 
 usage() {
     cat <<'EOF'
@@ -49,8 +50,9 @@ usage() {
           Опції: --host <IP>  --user <user>  --port <22>  --key <шлях>
 
 Загальні:
-  --dest <шлях>   Куди зберегти sysroot (обов'язково)
-  --help          Ця довідка
+  --dest <шлях>            Куди зберегти sysroot (обов'язково)
+  --extra-packages <список> Додаткові deb-пакети для встановлення (через пробіл або кому)
+  --help                   Ця довідка
 
 Приклади:
   # Без RPi — через Docker (найпростіший спосіб для RPi 3/4/5)
@@ -75,7 +77,8 @@ while [[ $# -gt 0 ]]; do
         --host)    RPI_HOST="$2";    shift 2 ;;
         --user)    RPI_USER="$2";    shift 2 ;;
         --port)    RPI_PORT="$2";    shift 2 ;;
-        --key)     RPI_KEY="$2";     shift 2 ;;
+        --key)             RPI_KEY="$2";         shift 2 ;;
+        --extra-packages)  EXTRA_PACKAGES="$2";  shift 2 ;;
         --help|-h) usage ;;
         *) log_error "Невідомий аргумент: '$1'"; usage ;;
     esac
@@ -188,21 +191,26 @@ method_docker() {
     log_info "Завантаження образу ${DOCKER_IMAGE}..."
     docker pull --platform "linux/${DOCKER_ARCH}" "${DOCKER_IMAGE}"
 
-    log_info "Запуск контейнера та встановлення пакетів розробки..."
+    # Базові dev-пакети + будь-які extra-packages від користувача
+    local BASE_PACKAGES="libc6-dev libstdc++-12-dev libgcc-12-dev libssl-dev zlib1g-dev"
+    local EXTRA_PKG_LIST=""
+    if [[ -n "${EXTRA_PACKAGES}" ]]; then
+        # дозволяємо роздільники: пробіл, кома
+        EXTRA_PKG_LIST=$(echo "${EXTRA_PACKAGES}" | tr ',' ' ')
+        log_info "Додаткові пакети: ${EXTRA_PKG_LIST}"
+    fi
+
+    log_info "Запуск контейнера..."
     local CONTAINER_ID
-    CONTAINER_ID=$(docker run -d --platform "linux/${DOCKER_ARCH}" "${DOCKER_IMAGE}" bash -c "
-        apt-get update -qq &&
-        apt-get install -y --no-install-recommends \
-            libc6-dev libstdc++-12-dev libgcc-12-dev \
-            libssl-dev libz-dev \
-            2>/dev/null;
-        sleep infinity
-    ")
+    CONTAINER_ID=$(docker run -d --platform "linux/${DOCKER_ARCH}" "${DOCKER_IMAGE}" sleep infinity)
     log_info "Контейнер: ${CONTAINER_ID}"
 
-    # Чекаємо поки apt завершить
-    sleep 5
-    docker exec "${CONTAINER_ID}" bash -c "apt-get install -y --no-install-recommends libstdc++-12-dev 2>/dev/null || true"
+    log_info "Встановлення пакетів розробки..."
+    # shellcheck disable=SC2086
+    docker exec "${CONTAINER_ID}" bash -c "
+        apt-get update -qq &&
+        apt-get install -y --no-install-recommends ${BASE_PACKAGES} ${EXTRA_PKG_LIST}
+    "
 
     log_info "Копіювання sysroot з контейнера..."
     local DIRS=(lib usr/include usr/lib usr/local)

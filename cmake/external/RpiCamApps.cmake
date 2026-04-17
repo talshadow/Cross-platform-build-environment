@@ -114,6 +114,11 @@ else()
                     "${CMAKE_CURRENT_LIST_DIR}/patches/rpicamapps-libexif-optional.py"
                     "${EP_SOURCES_DIR}/rpicamapps"
             CONFIGURE_COMMAND
+                env
+                    PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig
+                    BOOST_ROOT=${EXTERNAL_INSTALL_PREFIX}
+                    BOOST_INCLUDEDIR=${EXTERNAL_INSTALL_PREFIX}/include
+                    BOOST_LIBRARYDIR=${EXTERNAL_INSTALL_PREFIX}/lib
                 ${_rpicam_meson} setup
                     --reconfigure
                     ${_rpicam_cross_args}
@@ -141,6 +146,8 @@ else()
 
         ep_imported_library_from_ep(
             rpicam_apps::camera_app rpicamapps_ep "${_rpicam_lib}" "${_rpicam_inc}")
+
+        ep_prestamp_git(rpicamapps_ep "${EP_SOURCES_DIR}/rpicamapps" "${RPICAMAPPS_VERSION}")
 
         unset(_rpicam_meson)
         unset(_rpicam_ninja)

@@ -77,7 +77,7 @@ else()
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
             # MavLinkCom не включає <cstdint> явно — не компілюється на GCC 13+.
             # -include змушує компілятор додати #include на початку кожного TU.
-            "-DCMAKE_CXX_FLAGS=-include cstdint"
+            "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -include cstdint"
             # AirSim CommonSetup.cmake шукає AIRSIM_ROOT через find_path з відносними
             # шляхами. З CMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY ці шляхи трансформуються
             # sysroot-префіксом і не знаходяться. Передаємо явно щоб find_path пропустив пошук.
