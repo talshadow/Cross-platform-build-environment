@@ -19,7 +19,7 @@ cmake --preset rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
 cmake --build --preset rpi4-release
 
 # Через скрипт-обгортку
-./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+./scripts/build-system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
 
 # Без пресетів (явний toolchain)
 cmake -B build/rpi4 \
@@ -41,20 +41,20 @@ ctest --preset native-debug --output-on-failure
 
 ```bash
 # RPi — через Docker (не потрібен фізичний RPi)
-./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
+./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
 
 # З додатковими пакетами (напр. для libopencv, libboost тощо)
-./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot \
+./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot \
     --extra-packages "libopencv-dev,libboost-all-dev"
 
 # RPi — з образу .img
-sudo ./scripts/build_system-get-sysroot-rpi.sh --method image --image rpi.img.xz --dest /srv/rpi4-sysroot
+sudo ./scripts/build-system-get-sysroot-rpi.sh --method image --image rpi.img.xz --dest /srv/rpi4-sysroot
 
 # RPi — з живого пристрою
-./scripts/build_system-get-sysroot-rpi.sh --method live --host 192.168.1.100 --dest /srv/rpi4-sysroot
+./scripts/build-system-get-sysroot-rpi.sh --method live --host 192.168.1.100 --dest /srv/rpi4-sysroot
 
 # Yocto — встановити SDK
-./scripts/build_system-get-sysroot-yocto.sh --method sdk --installer ./poky-*.sh
+./scripts/build-system-get-sysroot-yocto.sh --method sdk --installer ./poky-*.sh
 source /opt/poky/<ver>/environment-setup-<target>-poky-linux
 ```
 
@@ -63,10 +63,10 @@ source /opt/poky/<ver>/environment-setup-<target>-poky-linux
 ```
 cmake/toolchains/   — toolchain файли для кожної платформи
 cmake/modules/      — CompilerWarnings, Sanitizers, CrossCompileHelpers, GitVersion, StripDebug, BinaryDeps
-cmake/external/     — сторонні бібліотеки через ExternalProject (23 бібліотеки; див. build_system-spec-external.md)
+cmake/external/     — сторонні бібліотеки через ExternalProject (23 бібліотеки; див. build-system-spec-external.md)
 cmake/SuperBuild.cmake — superbuild режим
 scripts/            — install-toolchains, get-sysroot-*, sync-sysroot, build, deploy
-docs/               — build_system-overview.md, build_system-toolchains.md, build_system-getting-started.md
+docs/               — build-system-overview.md, build-system-toolchains.md, build-system-getting-started.md
 src/                — вихідний код (CMakeLists.txt-заглушка)
 tests/              — тести GTest (CMakeLists.txt-заглушка)
 ```
@@ -202,16 +202,16 @@ SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проє
 
 ## Специфікації
 
-- `docs/build_system-spec-presets.md` — конвенції CMakePresets.json, чеклист додавання пресету
-- `docs/build_system-spec-external.md` — контракт Lib*.cmake, API Common.cmake, кроки додавання бібліотеки
-- `docs/build_system-spec-toolchain.md` — обов'язкові змінні, заборони, подвійне завантаження
-- `docs/build_system-spec-modules.md` — повний API: сигнатури, параметри, поведінка при помилках
-- `docs/build_system-ide-setup.md` — налаштування Qt Creator і VS Code (пресети, IntelliSense, remote debug)
+- `docs/build-system-spec-presets.md` — конвенції CMakePresets.json, чеклист додавання пресету
+- `docs/build-system-spec-external.md` — контракт Lib*.cmake, API Common.cmake, кроки додавання бібліотеки
+- `docs/build-system-spec-toolchain.md` — обов'язкові змінні, заборони, подвійне завантаження
+- `docs/build-system-spec-modules.md` — повний API: сигнатури, параметри, поведінка при помилках
+- `docs/build-system-ide-setup.md` — налаштування Qt Creator і VS Code (пресети, IntelliSense, remote debug)
 
 ## Важливі особливості
 
 - **Toolchain завантажується двічі** — не використовуйте `message(FATAL_ERROR)` в умовах, які спрацьовують при першому завантаженні. Перевіряйте `CMAKE_CROSSCOMPILING`.
 - **`CMAKE_C_FLAGS_INIT` замість `CMAKE_C_FLAGS`** у toolchain — щоб не перекрити прапори користувача.
-- **Абсолютні симлінки в sysroot** — автоматично виправляються скриптами `get-sysroot-*.sh` та `build_system-sync-sysroot.sh`.
-- **Yocto**: SDK середовище повинно бути активоване (`source environment-setup-*`) до запуску `cmake`. Перевірка: `./scripts/build_system-get-sysroot-yocto.sh --method check`.
+- **Абсолютні симлінки в sysroot** — автоматично виправляються скриптами `get-sysroot-*.sh` та `build-system-sync-sysroot.sh`.
+- **Yocto**: SDK середовище повинно бути активоване (`source environment-setup-*`) до запуску `cmake`. Перевірка: `./scripts/build-system-get-sysroot-yocto.sh --method check`.
 - **Pi 1/Zero ARMv6**: Ubuntu `arm-linux-gnueabihf` має ARMv7 baseline — для справжнього ARMv6 потрібен спеціальний toolchain від RPi Foundation.

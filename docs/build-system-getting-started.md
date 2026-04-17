@@ -17,14 +17,14 @@
 ## 1. Встановлення крос-компіляторів
 
 ```bash
-sudo ./scripts/build_system-install-toolchains.sh all
+sudo ./scripts/build-system-install-toolchains.sh all
 ```
 
 Скрипт автоматично визначає ОС і використовує `apt` (Ubuntu) або `pacman` (Arch/CachyOS).
 
 Для вибіркового встановлення:
 ```bash
-sudo ./scripts/build_system-install-toolchains.sh rpi-arm64 ninja cmake
+sudo ./scripts/build-system-install-toolchains.sh rpi-arm64 ninja cmake
 ```
 
 Доступні варіанти: `all`, `rpi-arm32`, `rpi-arm64`, `native20`, `native24`, `native-arch`, `ninja`, `cmake`.
@@ -47,10 +47,10 @@ sudo ./scripts/build_system-install-toolchains.sh rpi-arm64 ninja cmake
 
 ```bash
 # RPi 3 / 4 / 5 (AArch64)
-./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
+./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
 
 # RPi 2 / 3 (32-bit)
-./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm/v7 --dest /srv/rpi2-sysroot
+./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm/v7 --dest /srv/rpi2-sysroot
 ```
 
 ### Варіант B: з образу Raspberry Pi OS (.img)
@@ -59,7 +59,7 @@ sudo ./scripts/build_system-install-toolchains.sh rpi-arm64 ninja cmake
 # Завантажте образ з https://www.raspberrypi.com/software/operating-systems/
 # Наприклад: 2024-07-04-raspios-bookworm-arm64-lite.img.xz
 
-sudo ./scripts/build_system-get-sysroot-rpi.sh \
+sudo ./scripts/build-system-get-sysroot-rpi.sh \
     --method image \
     --image 2024-07-04-raspios-bookworm-arm64-lite.img.xz \
     --dest /srv/rpi4-sysroot
@@ -70,7 +70,7 @@ sudo ./scripts/build_system-get-sysroot-rpi.sh \
 ### Варіант C: з живого Raspberry Pi
 
 ```bash
-./scripts/build_system-get-sysroot-rpi.sh \
+./scripts/build-system-get-sysroot-rpi.sh \
     --method live \
     --host 192.168.1.100 \
     --user pi \
@@ -81,13 +81,13 @@ sudo ./scripts/build_system-get-sysroot-rpi.sh \
 
 ```bash
 # 1. Встановити SDK (.sh інсталятор із Yocto build або з сервера)
-./scripts/build_system-get-sysroot-yocto.sh --method sdk --installer ./poky-glibc-*.sh
+./scripts/build-system-get-sysroot-yocto.sh --method sdk --installer ./poky-glibc-*.sh
 
 # 2. Активувати SDK перед збіркою
 source /opt/poky/<version>/environment-setup-<target>-poky-linux
 
 # 3. Перевірити що SDK активоване
-./scripts/build_system-get-sysroot-yocto.sh --method check
+./scripts/build-system-get-sysroot-yocto.sh --method check
 ```
 
 ---
@@ -116,9 +116,9 @@ cmake --build --preset rpi4-release
 ### Через скрипт build.sh
 
 ```bash
-./scripts/build_system-build.sh rpi4-release
-./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
-./scripts/build_system-build.sh ubuntu2404-asan
+./scripts/build-system-build.sh rpi4-release
+./scripts/build-system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+./scripts/build-system-build.sh ubuntu2404-asan
 ```
 
 ### Через cmake напряму (без presets)
@@ -186,17 +186,17 @@ ctest --preset ubuntu2404-debug --output-on-failure
 
 ```bash
 # Зібрати
-./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+./scripts/build-system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
 
 # Розгорнути
-./scripts/build_system-deploy.sh \
+./scripts/build-system-deploy.sh \
     --preset rpi4-release \
     --host 192.168.1.100 \
     --user pi \
     --remote-dir /home/pi/my_app
 
 # Розгорнути та одразу запустити
-./scripts/build_system-deploy.sh \
+./scripts/build-system-deploy.sh \
     --preset rpi4-release \
     --host 192.168.1.100 \
     --run my_app \
@@ -209,14 +209,14 @@ ctest --preset ubuntu2404-debug --output-on-failure
 
 ```bash
 # 1. Встановити інструменти (Ubuntu або Arch/CachyOS — скрипт визначає ОС автоматично)
-sudo ./scripts/build_system-install-toolchains.sh rpi-arm64 ninja cmake
+sudo ./scripts/build-system-install-toolchains.sh rpi-arm64 ninja cmake
 
 # 2. Отримати sysroot (через Docker)
-./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
+./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
 
 # 3. Зібрати
-./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+./scripts/build-system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
 
 # 4. Розгорнути
-./scripts/build_system-deploy.sh --preset rpi4-release --host 192.168.1.100 --user pi
+./scripts/build-system-deploy.sh --preset rpi4-release --host 192.168.1.100 --user pi
 ```

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# scripts/build_system-get-sysroot-rpi.sh
+# scripts/build-system-get-sysroot-rpi.sh
 #
 # Отримує sysroot для Raspberry Pi одним із трьох методів:
 #
 #   METHOD=image   — розпаковує образ Raspberry Pi OS (.img) без фізичного RPi
 #   METHOD=docker  — витягує sysroot з офіційного Docker-образу (інтернет)
-#   METHOD=live    — синхронізує sysroot з живого RPi по SSH (→ build_system-sync-sysroot.sh)
+#   METHOD=live    — синхронізує sysroot з живого RPi по SSH (→ build-system-sync-sysroot.sh)
 #
 # Використання:
-#   ./scripts/build_system-get-sysroot-rpi.sh --method image  --image rpi.img --dest /srv/rpi4-sysroot
-#   ./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm64    --dest /srv/rpi4-sysroot
-#   ./scripts/build_system-get-sysroot-rpi.sh --method live   --host 192.168.1.100 --dest /srv/rpi4-sysroot
+#   ./scripts/build-system-get-sysroot-rpi.sh --method image  --image rpi.img --dest /srv/rpi4-sysroot
+#   ./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64    --dest /srv/rpi4-sysroot
+#   ./scripts/build-system-get-sysroot-rpi.sh --method live   --host 192.168.1.100 --dest /srv/rpi4-sysroot
 #
 # Після виконання:
 #   cmake --preset rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
@@ -37,7 +37,7 @@ EXTRA_PACKAGES=""
 
 usage() {
     cat <<'EOF'
-Використання: build_system-get-sysroot-rpi.sh --method <метод> --dest <шлях> [ОПЦІЇ]
+Використання: build-system-get-sysroot-rpi.sh --method <метод> --dest <шлях> [ОПЦІЇ]
 
 Методи:
   image   Розпакувати sysroot з образу Raspberry Pi OS (.img)
@@ -46,7 +46,7 @@ usage() {
   docker  Витягти sysroot з Docker-образу (потрібен Docker + інтернет)
           Опції: --arch <arm64|arm/v7>   (за замовчуванням: arm64)
 
-  live    Синхронізувати sysroot з живого RPi по SSH (обгортка build_system-sync-sysroot.sh)
+  live    Синхронізувати sysroot з живого RPi по SSH (обгортка build-system-sync-sysroot.sh)
           Опції: --host <IP>  --user <user>  --port <22>  --key <шлях>
 
 Загальні:
@@ -56,14 +56,14 @@ usage() {
 
 Приклади:
   # Без RPi — через Docker (найпростіший спосіб для RPi 3/4/5)
-  ./scripts/build_system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
+  ./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot
 
   # З образу (не потрібний ні RPi, ні Docker)
   wget https://downloads.raspberrypi.org/raspios_lite_arm64/images/.../xxx.img.xz
-  ./scripts/build_system-get-sysroot-rpi.sh --method image --image xxx.img.xz --dest /srv/rpi4-sysroot
+  ./scripts/build-system-get-sysroot-rpi.sh --method image --image xxx.img.xz --dest /srv/rpi4-sysroot
 
   # З живого RPi
-  ./scripts/build_system-get-sysroot-rpi.sh --method live --host 192.168.1.100 --dest /srv/rpi4-sysroot
+  ./scripts/build-system-get-sysroot-rpi.sh --method live --host 192.168.1.100 --dest /srv/rpi4-sysroot
 EOF
     exit 0
 }
@@ -237,14 +237,14 @@ method_docker() {
 }
 
 # ===========================================================================
-# МЕТОД 3: Живий RPi (делегація до build_system-sync-sysroot.sh)
+# МЕТОД 3: Живий RPi (делегація до build-system-sync-sysroot.sh)
 # ===========================================================================
 method_live() {
     [[ -z "${RPI_HOST}" ]] && { log_error "--host обов'язковий для method=live"; exit 1; }
 
-    local SYNC_SCRIPT="${SCRIPT_DIR}/build_system-sync-sysroot.sh"
+    local SYNC_SCRIPT="${SCRIPT_DIR}/build-system-sync-sysroot.sh"
     if [[ ! -f "${SYNC_SCRIPT}" ]]; then
-        log_error "scripts/build_system-sync-sysroot.sh не знайдено"
+        log_error "scripts/build-system-sync-sysroot.sh не знайдено"
         exit 1
     fi
 
@@ -279,7 +279,7 @@ fixup_symlinks() {
     echo "Використання:"
     echo "  cmake --preset rpi4-release -DRPI_SYSROOT=${DEST}"
     echo "  # або:"
-    echo "  ./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=${DEST}"
+    echo "  ./scripts/build-system-build.sh rpi4-release -DRPI_SYSROOT=${DEST}"
 }
 
 # --- Запуск ----------------------------------------------------------------

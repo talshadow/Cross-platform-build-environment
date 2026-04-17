@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/build_system-get-sysroot-yocto.sh
+# scripts/build-system-get-sysroot-yocto.sh
 #
 # Допомагає отримати та підготувати sysroot для Yocto Linux.
 # Yocto надає sysroot через SDK-інсталятор (.sh скрипт).
@@ -10,9 +10,9 @@
 #   check   — перевірити вже активоване SDK середовище
 #
 # Використання:
-#   ./scripts/build_system-get-sysroot-yocto.sh --method sdk     --installer poky-*.sh [--dest /opt/poky]
-#   ./scripts/build_system-get-sysroot-yocto.sh --method extract --installer poky-*.sh --dest /srv/yocto-sysroot
-#   ./scripts/build_system-get-sysroot-yocto.sh --method check
+#   ./scripts/build-system-get-sysroot-yocto.sh --method sdk     --installer poky-*.sh [--dest /opt/poky]
+#   ./scripts/build-system-get-sysroot-yocto.sh --method extract --installer poky-*.sh --dest /srv/yocto-sysroot
+#   ./scripts/build-system-get-sysroot-yocto.sh --method check
 #
 # Після встановлення SDK:
 #   source /opt/poky/<ver>/environment-setup-<target>-poky-linux
@@ -32,7 +32,7 @@ DEST=""
 
 usage() {
     cat <<'EOF'
-Використання: build_system-get-sysroot-yocto.sh --method <метод> [ОПЦІЇ]
+Використання: build-system-get-sysroot-yocto.sh --method <метод> [ОПЦІЇ]
 
 Методи:
   sdk       Встановити повний Yocto SDK (рекомендовано)
@@ -109,7 +109,7 @@ method_sdk() {
         echo "Після активації запустіть збірку:"
         echo "  cmake --preset yocto-release"
         echo "  # або:"
-        echo "  ./scripts/build_system-build.sh yocto-release"
+        echo "  ./scripts/build-system-build.sh yocto-release"
     fi
 }
 
@@ -214,7 +214,7 @@ method_check() {
         echo "  source /opt/poky/<version>/environment-setup-<target>-poky-linux"
         echo ""
         echo "Якщо SDK не встановлено:"
-        echo "  ./scripts/build_system-get-sysroot-yocto.sh --method sdk --installer poky-*.sh"
+        echo "  ./scripts/build-system-get-sysroot-yocto.sh --method sdk --installer poky-*.sh"
         exit 1
     fi
 }

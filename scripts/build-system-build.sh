@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# scripts/build_system-build.sh
+# scripts/build-system-build.sh
 #
 # Обгортка над cmake --preset для зручної збірки.
 #
 # Використання:
-#   ./scripts/build_system-build.sh <preset> [cmake-options...]
+#   ./scripts/build-system-build.sh <preset> [cmake-options...]
 #
 # Приклади:
-#   ./scripts/build_system-build.sh rpi4-release
-#   ./scripts/build_system-build.sh ubuntu2404-debug -DBUILD_TESTS=OFF
-#   ./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
-#   ./scripts/build_system-build.sh --list
+#   ./scripts/build-system-build.sh rpi4-release
+#   ./scripts/build-system-build.sh ubuntu2404-debug -DBUILD_TESTS=OFF
+#   ./scripts/build-system-build.sh rpi4-release -DRPI_SYSROOT=/srv/rpi4-sysroot
+#   ./scripts/build-system-build.sh --list
 #
 # Результат збірки: build/<preset>/bin/
 
@@ -42,7 +42,7 @@ usage() {
 # --- Перевірка CMake -------------------------------------------------------
 check_cmake() {
     if ! command -v cmake &>/dev/null; then
-        log_error "cmake не знайдено. Встановіть: sudo ./scripts/build_system-install-toolchains.sh cmake"
+        log_error "cmake не знайдено. Встановіть: sudo ./scripts/build-system-install-toolchains.sh cmake"
         exit 1
     fi
     local ver

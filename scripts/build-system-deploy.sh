@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# scripts/build_system-deploy.sh
+# scripts/build-system-deploy.sh
 #
 # Розгортає зібрані артефакти на цільову систему по SSH/rsync.
 # Підтримує Raspberry Pi та будь-який Linux з SSH.
 #
 # Використання:
-#   ./scripts/build_system-deploy.sh --preset <preset> --host <IP> [ОПЦІЇ]
+#   ./scripts/build-system-deploy.sh --preset <preset> --host <IP> [ОПЦІЇ]
 #
 # Приклади:
-#   ./scripts/build_system-deploy.sh --preset rpi4-release --host 192.168.1.100
-#   ./scripts/build_system-deploy.sh --preset rpi4-release --host rpi4.local \
+#   ./scripts/build-system-deploy.sh --preset rpi4-release --host 192.168.1.100
+#   ./scripts/build-system-deploy.sh --preset rpi4-release --host rpi4.local \
 #       --user pi --key ~/.ssh/rpi_key --remote-dir /home/pi/app
-#   ./scripts/build_system-deploy.sh --preset rpi4-release --host 192.168.1.100 \
+#   ./scripts/build-system-deploy.sh --preset rpi4-release --host 192.168.1.100 \
 #       --run my_app --run-args "--config /etc/app.cfg"
 
 set -euo pipefail
@@ -94,7 +94,7 @@ LIB_DIR="${BUILD_DIR}/lib"
 
 if [[ ! -d "${BUILD_DIR}" ]]; then
     log_error "Каталог збірки не існує: ${BUILD_DIR}"
-    log_error "Спочатку виконайте: ./scripts/build_system-build.sh ${PRESET}"
+    log_error "Спочатку виконайте: ./scripts/build-system-build.sh ${PRESET}"
     exit 1
 fi
 
