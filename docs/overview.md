@@ -4,7 +4,7 @@
 
 Інфраструктурний CMake проєкт: надає готові toolchain файли, CMake модулі та
 допоміжні скрипти для крос-компіляції C/C++ проєктів під Raspberry Pi і
-Yocto Linux з host-систем Ubuntu 20.04 / 24.04.
+Yocto Linux з host-систем Ubuntu 20.04 / 24.04 та Arch Linux / CachyOS.
 
 Проєкт не є застосунком — це шаблон і набір інструментів, який підключається
 до вашого основного `CMakeLists.txt`.
@@ -81,7 +81,7 @@ SupportRaspberryPI/
 │   └── SuperBuild.cmake        # Superbuild режим (всі deps + main як EP)
 │
 ├── scripts/
-│   ├── install-toolchains.sh   # Встановити крос-компілятори (apt)
+│   ├── install-toolchains.sh   # Встановити крос-компілятори (apt / pacman)
 │   ├── get-sysroot-rpi.sh      # Отримати sysroot для RPi (Docker/образ/SSH)
 │   ├── get-sysroot-yocto.sh    # Встановити/витягнути Yocto SDK sysroot
 │   ├── sync-sysroot.sh         # Синхронізувати sysroot з живого RPi
@@ -107,10 +107,11 @@ SupportRaspberryPI/
 ## Потік крос-компіляції
 
 ```
-Host (Ubuntu)
+Host (Ubuntu / Arch / CachyOS)
 │
 ├─ [1] install-toolchains.sh
-│      apt install gcc-aarch64-linux-gnu ...
+│      apt install gcc-aarch64-linux-gnu ...     # Ubuntu
+│      pacman -S aarch64-linux-gnu-gcc ...       # Arch / CachyOS
 │
 ├─ [2] get-sysroot-rpi.sh / get-sysroot-yocto.sh
 │      → /srv/rpi4-sysroot/
@@ -187,13 +188,11 @@ base (hidden)
 │   inherits: base
 │   BUILD_TESTS: OFF
 │
-├── ubuntu2404-debug
-│   toolchainFile: Ubuntu2404.cmake
-│   CMAKE_BUILD_TYPE: Debug
+├── native-debug / native-release / native-asan
+│   CMAKE_BUILD_TYPE: Debug / Release
 │
-├── ubuntu2404-asan
-│   inherits: ubuntu2404-debug
-│   ENABLE_ASAN: ON, ENABLE_UBSAN: ON
+├── clang-debug / clang-asan / clang-tsan
+│   toolchainFile: Clang.cmake
 │
 ├── rpi4-debug / rpi4-release
 │   inherits: base-cross
@@ -328,9 +327,9 @@ cmake --preset rpi4-release -DUSE_SYSTEM_OPENSSL=ON -DRPI_SYSROOT=/srv/rpi4-sysr
     ├── external_sources/             ← git-клони сорців (спільні для всіх toolchain)
     ├── external/                     ← скомпільовані бібліотеки (per-toolchain)
     │   ├── RaspberryPi4/Release/
-    │   └── Ubuntu2404/Debug/
+    │   └── native/Debug/
     ├── rpi4-release/                 ← preset build dirs
-    └── ubuntu2404-debug/
+    └── native-debug/
 ```
 
 ### Режим SuperBuild

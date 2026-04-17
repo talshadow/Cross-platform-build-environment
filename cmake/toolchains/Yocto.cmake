@@ -18,7 +18,7 @@
 #
 # Архітектура визначається автоматично зі змінних SDK.
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # --- Визначення архітектури з SDK -----------------------------------------
 # OECORE_TARGET_ARCH встановлюється скриптом environment-setup-*

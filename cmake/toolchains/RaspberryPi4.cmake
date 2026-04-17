@@ -55,13 +55,37 @@ if(_RPI4_CC_VERSIONED)
     unset(_STRIP)
     unset(_RANLIB)
 else()
-    message(WARNING
-        "[RaspberryPi4] gcc-${RPI4_GCC_VERSION} не знайдено, "
-        "використовується неверсований aarch64-linux-gnu-gcc. "
-        "Встановіть: sudo apt install gcc-${RPI4_GCC_VERSION}-aarch64-linux-gnu")
-    cross_toolchain_find_compiler(
-        "${RPI4_TOOLCHAIN_PREFIX}"
+    # Перевіряємо чи неверсований компілятор є CT-NG toolchain.
+    # CT-NG завжди виводить "crosstool-NG" у рядку --version,
+    # тому попередження про відсутність версованого gcc не актуальне:
+    # CT-NG за замовчуванням не створює версованих симлінків.
+    find_program(_RPI4_CC_PLAIN "${RPI4_TOOLCHAIN_PREFIX}-gcc" HINTS ENV PATH)
+    set(_rpi4_is_ctng FALSE)
+    if(_RPI4_CC_PLAIN)
+        execute_process(
+            COMMAND "${_RPI4_CC_PLAIN}" --version
+            OUTPUT_VARIABLE _rpi4_ver_str
+            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(_rpi4_ver_str MATCHES "crosstool-NG")
+            set(_rpi4_is_ctng TRUE)
+        endif()
+        unset(_rpi4_ver_str)
+    endif()
+    unset(_RPI4_CC_PLAIN)
+
+    if(NOT _rpi4_is_ctng)
+        message(WARNING
+            "[RaspberryPi4] gcc-${RPI4_GCC_VERSION} не знайдено, "
+            "використовується неверсований aarch64-linux-gnu-gcc.\n"
+            "  Ubuntu/Debian : sudo apt install gcc-${RPI4_GCC_VERSION}-aarch64-linux-gnu\n"
+            "  Arch/CachyOS  : aarch64-linux-gnu-gcc встановлюється без версії (пакет aarch64-linux-gnu-gcc)")
+    endif()
+    unset(_rpi4_is_ctng)
+
+    set(_rpi4_install_hint
         "gcc-${RPI4_GCC_VERSION}-aarch64-linux-gnu g++-${RPI4_GCC_VERSION}-aarch64-linux-gnu")
+    cross_toolchain_find_compiler("${RPI4_TOOLCHAIN_PREFIX}" "${_rpi4_install_hint}")
+    unset(_rpi4_install_hint)
 endif()
 unset(_RPI4_CC_VERSIONED)
 

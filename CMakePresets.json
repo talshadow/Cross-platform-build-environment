@@ -66,87 +66,12 @@
     },
 
     {
-      "name": "ubuntu2004-debug",
-      "displayName": "Ubuntu 20.04 — Debug",
-      "description": "Нативна збірка GCC 10, Ubuntu 20.04, режим Debug",
-      "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2004.cmake",
+      "name": "native-tsan",
+      "displayName": "Native — Debug + TSAN",
+      "description": "Нативна збірка системним компілятором з ThreadSanitizer",
+      "inherits": "native-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "UBUNTU2004_GCC_VERSION": "10"
-      }
-    },
-
-    {
-      "name": "ubuntu2004-release",
-      "displayName": "Ubuntu 20.04 — Release",
-      "description": "Нативна збірка GCC 10, Ubuntu 20.04, режим Release",
-      "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2004.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "UBUNTU2004_GCC_VERSION": "10",
-        "ENABLE_LTO": "ON"
-      }
-    },
-
-    {
-      "name": "ubuntu2004-relwithdebinfo",
-      "displayName": "Ubuntu 20.04 — RelWithDebInfo",
-      "description": "Нативна збірка GCC 10, Ubuntu 20.04, Release з debug символами",
-      "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2004.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "UBUNTU2004_GCC_VERSION": "10"
-      }
-    },
-
-    {
-      "name": "ubuntu2404-debug",
-      "displayName": "Ubuntu 24.04 — Debug",
-      "description": "Нативна збірка GCC 13, Ubuntu 24.04, режим Debug",
-      "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2404.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "UBUNTU2404_GCC_VERSION": "13"
-      }
-    },
-
-    {
-      "name": "ubuntu2404-release",
-      "displayName": "Ubuntu 24.04 — Release",
-      "description": "Нативна збірка GCC 13, Ubuntu 24.04, режим Release",
-      "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2404.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "UBUNTU2404_GCC_VERSION": "13",
-        "ENABLE_LTO": "ON"
-      }
-    },
-
-    {
-      "name": "ubuntu2404-relwithdebinfo",
-      "displayName": "Ubuntu 24.04 — RelWithDebInfo",
-      "description": "Нативна збірка GCC 13, Ubuntu 24.04, Release з debug символами",
-      "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/Ubuntu2404.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "UBUNTU2404_GCC_VERSION": "13"
-      }
-    },
-
-    {
-      "name": "ubuntu2404-asan",
-      "displayName": "Ubuntu 24.04 — Debug + ASAN + UBSAN",
-      "description": "Debug збірка з санітайзерами для розробки",
-      "inherits": "ubuntu2404-debug",
-      "cacheVariables": {
-        "ENABLE_ASAN": "ON",
-        "ENABLE_UBSAN": "ON"
+        "ENABLE_TSAN": "ON"
       }
     },
 
@@ -206,40 +131,6 @@
       "inherits": "clang-debug",
       "cacheVariables": {
         "ENABLE_TSAN": "ON"
-      }
-    },
-
-    {
-      "name": "clang18-debug",
-      "displayName": "Clang 18 — Debug",
-      "description": "Нативна збірка Clang 18, режим Debug",
-      "inherits": "base-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CLANG_VERSION": "18"
-      }
-    },
-
-    {
-      "name": "clang18-release",
-      "displayName": "Clang 18 — Release",
-      "description": "Нативна збірка Clang 18, режим Release з ThinLTO",
-      "inherits": "base-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CLANG_VERSION": "18",
-        "ENABLE_LTO": "ON"
-      }
-    },
-
-    {
-      "name": "clang18-asan",
-      "displayName": "Clang 18 — Debug + ASAN + UBSAN",
-      "description": "Clang 18 Debug з AddressSanitizer та UBSanitizer",
-      "inherits": "clang18-debug",
-      "cacheVariables": {
-        "ENABLE_ASAN": "ON",
-        "ENABLE_UBSAN": "ON"
       }
     },
 
@@ -348,21 +239,12 @@
     { "name": "native-release",        "configurePreset": "native-release",        "jobs": 0 },
     { "name": "native-relwithdebinfo", "configurePreset": "native-relwithdebinfo", "jobs": 0 },
     { "name": "native-asan",           "configurePreset": "native-asan",           "jobs": 0 },
-    { "name": "ubuntu2004-debug",          "configurePreset": "ubuntu2004-debug",          "jobs": 0 },
-    { "name": "ubuntu2004-release",        "configurePreset": "ubuntu2004-release",        "jobs": 0 },
-    { "name": "ubuntu2004-relwithdebinfo", "configurePreset": "ubuntu2004-relwithdebinfo", "jobs": 0 },
-    { "name": "ubuntu2404-debug",          "configurePreset": "ubuntu2404-debug",          "jobs": 0 },
-    { "name": "ubuntu2404-release",        "configurePreset": "ubuntu2404-release",        "jobs": 0 },
-    { "name": "ubuntu2404-relwithdebinfo", "configurePreset": "ubuntu2404-relwithdebinfo", "jobs": 0 },
-    { "name": "ubuntu2404-asan",           "configurePreset": "ubuntu2404-asan",           "jobs": 0 },
+    { "name": "native-tsan",           "configurePreset": "native-tsan",           "jobs": 0 },
     { "name": "clang-debug",              "configurePreset": "clang-debug",              "jobs": 0 },
     { "name": "clang-release",            "configurePreset": "clang-release",            "jobs": 0 },
     { "name": "clang-relwithdebinfo",     "configurePreset": "clang-relwithdebinfo",     "jobs": 0 },
     { "name": "clang-asan",              "configurePreset": "clang-asan",              "jobs": 0 },
     { "name": "clang-tsan",              "configurePreset": "clang-tsan",              "jobs": 0 },
-    { "name": "clang18-debug",           "configurePreset": "clang18-debug",           "jobs": 0 },
-    { "name": "clang18-release",         "configurePreset": "clang18-release",         "jobs": 0 },
-    { "name": "clang18-asan",            "configurePreset": "clang18-asan",            "jobs": 0 },
     { "name": "rpi4-debug",                "configurePreset": "rpi4-debug",                "jobs": 0 },
     { "name": "rpi4-release",              "configurePreset": "rpi4-release",              "jobs": 0 },
     { "name": "rpi4-relwithdebinfo",       "configurePreset": "rpi4-relwithdebinfo",       "jobs": 0 },
@@ -388,20 +270,8 @@
       "execution": { "jobs": 1 }
     },
     {
-      "name": "ubuntu2004-debug",
-      "configurePreset": "ubuntu2004-debug",
-      "output": { "outputOnFailure": true },
-      "execution": { "jobs": 4 }
-    },
-    {
-      "name": "ubuntu2404-debug",
-      "configurePreset": "ubuntu2404-debug",
-      "output": { "outputOnFailure": true },
-      "execution": { "jobs": 4 }
-    },
-    {
-      "name": "ubuntu2404-asan",
-      "configurePreset": "ubuntu2404-asan",
+      "name": "native-tsan",
+      "configurePreset": "native-tsan",
       "output": { "outputOnFailure": true },
       "execution": { "jobs": 1 }
     },
@@ -420,18 +290,6 @@
     {
       "name": "clang-tsan",
       "configurePreset": "clang-tsan",
-      "output": { "outputOnFailure": true },
-      "execution": { "jobs": 1 }
-    },
-    {
-      "name": "clang18-debug",
-      "configurePreset": "clang18-debug",
-      "output": { "outputOnFailure": true },
-      "execution": { "jobs": 4 }
-    },
-    {
-      "name": "clang18-asan",
-      "configurePreset": "clang18-asan",
       "output": { "outputOnFailure": true },
       "execution": { "jobs": 1 }
     }

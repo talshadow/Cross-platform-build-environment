@@ -11,7 +11,7 @@
 #     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Ubuntu2004.cmake \
 #     [-DUBUNTU2004_GCC_VERSION=10]
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 set(CMAKE_SYSTEM_NAME      Linux)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)

@@ -22,7 +22,7 @@
 #     _ep_require_meson()                — перевіряє наявність meson+ninja, FATAL_ERROR якщо нема
 #     _ep_require_python_modules()       — перевіряє наявність Python3-модулів на хості
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 include(ExternalProject)
 include(ProcessorCount)
 
@@ -232,6 +232,10 @@ function(ep_cmake_args out_var)
         # rpath-link: наші артефакти (libtiff, libpng, libjpeg тощо)
         "-Wl,-rpath-link,${EXTERNAL_INSTALL_PREFIX}/lib")
     string(JOIN " " _ep_linker_prefix ${_ep_linker_prefix})
+    # RPI_SYSROOT_MULTIARCH встановлюється ВИКЛЮЧНО в RaspberryPi4.cmake і тільки
+    # коли toolchain prefix (напр. aarch64-unknown-linux-gnu для CT-NG) відрізняється
+    # від multiarch-триплета sysroot (aarch64-linux-gnu у Debian).
+    # RaspberryPi5.cmake і нативні toolchain цю змінну НЕ встановлюють.
     if(RPI_SYSROOT_MULTIARCH)
         # rpath-link: sysroot multiarch (libz.so.1, libpthread.so тощо)
         string(APPEND _ep_linker_prefix
@@ -685,6 +689,8 @@ endian = 'little'
         # toolchain prefix, потрібні додаткові include/lib шляхи.
         # RPI_SYSROOT_MULTIARCH встановлюється тільки в цьому випадку →
         # Ubuntu build (де триплети збігаються) цього блоку не виконує.
+        # RPI_SYSROOT_MULTIARCH: встановлюється тільки RaspberryPi4.cmake (CT-NG сценарій).
+        # RaspberryPi5.cmake та Ubuntu build цю змінну не отримують → блок не виконується.
         if(RPI_SYSROOT_MULTIARCH)
             # CT-NG: toolchain prefix відрізняється від multiarch-триплета sysroot.
             # -isystem: GCC не знає про /usr/include/<multiarch>/ в sysroot автоматично.

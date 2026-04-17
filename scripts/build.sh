@@ -50,8 +50,8 @@ check_cmake() {
     local major minor
     major=$(echo "$ver" | cut -d. -f1)
     minor=$(echo "$ver" | cut -d. -f2)
-    if [[ $major -lt 3 ]] || { [[ $major -eq 3 ]] && [[ $minor -lt 20 ]]; }; then
-        log_error "CMake ${ver} < 3.20. Оновіть CMake."
+    if [[ $major -lt 3 ]] || { [[ $major -eq 3 ]] && [[ $minor -lt 28 ]]; }; then
+        log_error "CMake ${ver} < 3.28. Оновіть CMake."
         exit 1
     fi
 }

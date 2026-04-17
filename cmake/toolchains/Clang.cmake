@@ -20,7 +20,7 @@
 #   За замовчуванням — системний ld. Для прискорення лінкування можна
 #   використати lld: -DCLANG_USE_LLD=ON (встановлює -fuse-ld=lld).
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 set(CMAKE_SYSTEM_NAME      Linux)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)

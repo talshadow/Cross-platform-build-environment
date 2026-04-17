@@ -1,17 +1,40 @@
 # Швидкий старт
 
+## Підтримувані host-системи
+
+| ОС | Версія | Пакетний менеджер |
+|---|---|---|
+| Ubuntu | 20.04 LTS | apt |
+| Ubuntu | 24.04 LTS | apt |
+| Arch Linux | rolling | pacman + AUR (yay/paru) |
+| CachyOS | rolling | pacman + AUR (yay/paru) |
+
+> На Arch/CachyOS для ARM 32-bit крос-компілятора (`arm-linux-gnueabihf`) потрібен AUR-хелпер
+> (`yay` або `paru`). Для AArch64 (`aarch64-linux-gnu`) достатньо офіційних репозиторіїв.
+
+---
+
 ## 1. Встановлення крос-компіляторів
 
 ```bash
 sudo ./scripts/install-toolchains.sh all
 ```
 
+Скрипт автоматично визначає ОС і використовує `apt` (Ubuntu) або `pacman` (Arch/CachyOS).
+
 Для вибіркового встановлення:
 ```bash
 sudo ./scripts/install-toolchains.sh rpi-arm64 ninja cmake
 ```
 
-Доступні варіанти: `all`, `rpi-arm32`, `rpi-arm64`, `native20`, `native24`, `ninja`, `cmake`.
+Доступні варіанти: `all`, `rpi-arm32`, `rpi-arm64`, `native20`, `native24`, `native-arch`, `ninja`, `cmake`.
+
+> **Arch/CachyOS — відмінності від Ubuntu:**
+> - `aarch64-linux-gnu-gcc` встановлюється без версії (не `gcc-12`/`gcc-13`).
+>   CMake toolchain автоматично переключається на неверсований компілятор.
+> - `arm-linux-gnueabihf-gcc` доступний тільки через AUR. Потрібен `yay` або `paru`.
+> - CMake 3.20+ та Ninja вже доступні в офіційних репозиторіях (`extra`).
+> - `native-arch` замість `native20`/`native24` — встановлює системний GCC.
 
 ---
 
@@ -185,7 +208,7 @@ ctest --preset ubuntu2404-debug --output-on-failure
 ## Швидкий сценарій: RPi 4, з нуля до запуску
 
 ```bash
-# 1. Встановити інструменти
+# 1. Встановити інструменти (Ubuntu або Arch/CachyOS — скрипт визначає ОС автоматично)
 sudo ./scripts/install-toolchains.sh rpi-arm64 ninja cmake
 
 # 2. Отримати sysroot (через Docker)

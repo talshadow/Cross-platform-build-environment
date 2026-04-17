@@ -32,9 +32,9 @@ cmake --build build/rpi4 -j$(nproc)
 ## Тести (тільки нативні пресети)
 
 ```bash
-ctest --preset ubuntu2404-debug
-ctest --preset ubuntu2404-debug -R <test_name>
-ctest --preset ubuntu2404-debug --output-on-failure
+ctest --preset native-debug
+ctest --preset native-debug -R <test_name>
+ctest --preset native-debug --output-on-failure
 ```
 
 ## Отримання sysroot
@@ -77,9 +77,6 @@ tests/              — тести GTest (CMakeLists.txt-заглушка)
 |---|---|---|
 | `native-debug/release/relwithdebinfo` | системний компілятор | нативний |
 | `native-asan` | системний компілятор + ASAN + UBSAN | нативний |
-| `ubuntu2004-debug/release/relwithdebinfo` | Ubuntu 20.04, GCC 10 | нативний |
-| `ubuntu2404-debug/release/relwithdebinfo` | Ubuntu 24.04, GCC 13 | нативний |
-| `ubuntu2404-asan` | Ubuntu 24.04 + ASAN + UBSAN | нативний |
 | `clang-debug/release/relwithdebinfo` | системний Clang | нативний |
 | `clang-asan` | Clang + ASAN + UBSAN | нативний |
 | `clang-tsan` | Clang + ThreadSanitizer | нативний |
@@ -196,9 +193,9 @@ SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проє
     ├── external_sources/        ← git-клони сорців (спільні для всіх toolchain)
     ├── external/                ← скомпільовані бібліотеки (per-toolchain)
     │   ├── RaspberryPi4/Release/
-    │   └── Ubuntu2404/Debug/
+    │   └── native/Debug/
     ├── rpi4-release/
-    └── ubuntu2404-debug/
+    └── native-debug/
 ```
 
 `-DBUILD_ROOT=/mnt/nvme/proj` — перевизначає кореневу директорію збірки.

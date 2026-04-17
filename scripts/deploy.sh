@@ -99,6 +99,10 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
 fi
 
 # --- SSH налаштування -------------------------------------------------------
+# StrictHostKeyChecking=no: вимикає перевірку host key, тому перше підключення
+# до нового хоста не потребує підтвердження. Зручно для автоматизації,
+# але зменшує захист від MITM-атак — використовуйте лише в довіреній мережі.
+log_warn "SSH: StrictHostKeyChecking=no — host key не перевіряється (зручно для CI/автоматизації, не для публічних мереж)"
 SSH_OPTS="-p ${TARGET_PORT} -o StrictHostKeyChecking=no"
 if [[ -n "${SSH_KEY}" ]]; then
     SSH_OPTS+=" -i ${SSH_KEY}"
@@ -109,7 +113,7 @@ SSH_CMD="ssh ${SSH_OPTS}"
 
 if "${USE_PASSWORD}"; then
     if ! command -v sshpass &>/dev/null; then
-        log_error "sshpass не встановлено: sudo apt install sshpass"
+        log_error "sshpass не встановлено. Встановіть: sudo apt install sshpass  або  sudo pacman -S sshpass"
         exit 1
     fi
     if [[ -z "${SSHPASS:-}" ]]; then

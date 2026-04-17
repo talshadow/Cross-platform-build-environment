@@ -136,7 +136,9 @@ else()
         # make не знайде його.  Prepend директорію компілятора до PATH для всіх
         # кроків збірки OpenSSL.  Якщо вже є в PATH — дублікат нешкідливий.
         get_filename_component(_ssl_cc_dir "${CMAKE_C_COMPILER}" DIRECTORY)
-        set(_ssl_env ${CMAKE_COMMAND} -E env "PATH=${_ssl_cc_dir}:$ENV{PATH}")
+        # "--" явно розділяє список env-змінних від команди, що запускається.
+        # Це запобігає неоднозначності якщо шлях компілятора починається з "-".
+        set(_ssl_env ${CMAKE_COMMAND} -E env "PATH=${_ssl_cc_dir}:$ENV{PATH}" --)
 
         # ── NASM (тільки x86/x86_64 нативна збірка) ──────────────────────
         # OpenSSL використовує NASM для AES-NI/SHA-NI оптимізацій на x86_64.

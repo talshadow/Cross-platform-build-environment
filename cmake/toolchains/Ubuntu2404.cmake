@@ -11,7 +11,7 @@
 #     -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/Ubuntu2404.cmake \
 #     [-DUBUNTU2404_GCC_VERSION=14]
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 set(CMAKE_SYSTEM_NAME      Linux)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)

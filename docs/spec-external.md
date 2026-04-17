@@ -201,9 +201,9 @@ unset(_foo_hdr)
     │   └── opencv_contrib/
     ├── external/                  ← EXTERNAL_INSTALL_PREFIX root
     │   ├── RaspberryPi4/Release/
-    │   └── Ubuntu2404/Debug/
+    │   └── native/Debug/
     ├── rpi4-release/              ← preset build dirs
-    └── ubuntu2404-debug/
+    └── native-debug/
 ```
 
 **З `-DBUILD_ROOT=/mnt/nvme/proj`:**

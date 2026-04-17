@@ -213,11 +213,11 @@ install_cmake() {
         local major minor
         major=$(echo "$ver" | cut -d. -f1)
         minor=$(echo "$ver" | cut -d. -f2)
-        if [[ $major -gt 3 ]] || { [[ $major -eq 3 ]] && [[ $minor -ge 20 ]]; }; then
-            log_ok "CMake ${ver} (>= 3.20) вже встановлено"
+        if [[ $major -gt 3 ]] || { [[ $major -eq 3 ]] && [[ $minor -ge 28 ]]; }; then
+            log_ok "CMake ${ver} (>= 3.28) вже встановлено"
             return
         fi
-        log_warn "CMake ${ver} < 3.20. Потрібно оновити."
+        log_warn "CMake ${ver} < 3.28. Потрібно оновити."
     fi
 
     case "${_PKG_MANAGER}" in

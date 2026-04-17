@@ -5,11 +5,12 @@
 # Підтримує інкрементне оновлення — повторні виклики лише додають зміни.
 #
 # Вимоги на host:
-#   sudo apt install rsync
+#   Ubuntu/Debian : sudo apt install rsync
+#   Arch/CachyOS  : sudo pacman -S rsync
 #
 # Вимоги на RPi:
 #   - Запущений SSH (systemctl enable --now ssh)
-#   - rsync (sudo apt install rsync)
+#   - rsync (sudo apt install rsync  або  sudo pacman -S rsync)
 #
 # Використання:
 #   ./scripts/sync-sysroot.sh --host <IP> --dest <шлях> [ОПЦІЇ]
@@ -129,16 +130,17 @@ SYNC_DIRS+=("${EXTRA_DIRS[@]}")
 
 # --- Перевірка залежностей ------------------------------------------------
 if ! command -v rsync &>/dev/null; then
-    log_error "rsync не встановлено. Встановіть: sudo apt install rsync"
+    log_error "rsync не встановлено. Встановіть: sudo apt install rsync  або  sudo pacman -S rsync"
     exit 1
 fi
 
 if "${USE_PASSWORD}" && ! command -v sshpass &>/dev/null; then
-    log_error "sshpass не встановлено. Встановіть: sudo apt install sshpass"
+    log_error "sshpass не встановлено. Встановіть: sudo apt install sshpass  або  sudo pacman -S sshpass"
     exit 1
 fi
 
 # --- Побудова SSH аргументів -----------------------------------------------
+log_warn "SSH: StrictHostKeyChecking=no — host key не перевіряється (зручно для CI/автоматизації, не для публічних мереж)"
 SSH_OPTS=(-p "${RPI_PORT}" -o StrictHostKeyChecking=no -o BatchMode=no)
 if [[ -n "${RPI_SSH_KEY}" ]]; then
     SSH_OPTS+=(-i "${RPI_SSH_KEY}")
@@ -205,7 +207,7 @@ log_info "=== Виправлення абсолютних симлінків ===
 if "${DRY_RUN}"; then
     log_warn "DRY RUN: виправлення симлінків пропущено"
 else
-    find "${SYSROOT_DEST}" -type l | while read -r link; do
+    find "${SYSROOT_DEST}" -type l | while IFS= read -r link; do
         target=$(readlink "${link}")
         if [[ "${target}" == /* ]]; then
             # Абсолютний симлінк → робимо відносним через sysroot

@@ -98,7 +98,7 @@ method_image() {
     # --- Залежності ---------------------------------------------------------
     for dep in losetup partprobe mount findmnt; do
         command -v "${dep}" &>/dev/null || {
-            log_error "'${dep}' не знайдено. Встановіть: sudo apt install util-linux mount"
+            log_error "'${dep}' не знайдено. Встановіть: sudo apt install util-linux mount  або  sudo pacman -S util-linux"
             exit 1
         }
     done
@@ -107,7 +107,7 @@ method_image() {
     local img="${IMAGE_PATH}"
     if [[ "${img}" == *.xz ]]; then
         log_info "Розпаковую xz-архів..."
-        command -v xz &>/dev/null || { log_error "xz не знайдено: sudo apt install xz-utils"; exit 1; }
+        command -v xz &>/dev/null || { log_error "xz не знайдено. Встановіть: sudo apt install xz-utils  або  sudo pacman -S xz"; exit 1; }
         xz --decompress --keep --stdout "${img}" > "${DEST}/rpi.img"
         img="${DEST}/rpi.img"
         log_ok "Розпаковано: ${img}"
@@ -160,10 +160,18 @@ method_docker() {
         exit 1
     }
 
-    # Перевірка підтримки мультиарх (QEMU)
-    if ! docker buildx inspect default &>/dev/null || \
-       ! docker run --rm --platform linux/${DOCKER_ARCH} alpine uname -m &>/dev/null 2>&1; then
-        log_warn "Налаштування QEMU для мультиарх емуляції..."
+    # Перевірка підтримки мультиарх (QEMU) через binfmt_misc ядра.
+    # Не завантажуємо тестовий образ — перевіряємо наявність запису в /proc напряму,
+    # щоб уникнути хибних помилок через відсутність образу в локальному кеші Docker.
+    local _binfmt_entry
+    case "${DOCKER_ARCH}" in
+        arm64|aarch64)      _binfmt_entry="qemu-aarch64" ;;
+        arm/v7|armhf|arm32) _binfmt_entry="qemu-arm"     ;;
+        arm/v6|armv6)       _binfmt_entry="qemu-arm"     ;;
+        *)                  _binfmt_entry="qemu-${DOCKER_ARCH%%/*}" ;;
+    esac
+    if [[ ! -f "/proc/sys/fs/binfmt_misc/${_binfmt_entry}" ]]; then
+        log_warn "QEMU binfmt (${_binfmt_entry}) не знайдено — налаштування мультиарх емуляції..."
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
     fi
 
@@ -251,7 +259,7 @@ method_live() {
 # ===========================================================================
 fixup_symlinks() {
     log_info "=== Виправлення абсолютних симлінків ==="
-    find "${DEST}" -type l | while read -r link; do
+    find "${DEST}" -type l | while IFS= read -r link; do
         local target
         target=$(readlink "${link}")
         if [[ "${target}" == /* ]]; then

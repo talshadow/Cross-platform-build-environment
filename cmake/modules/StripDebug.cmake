@@ -22,7 +22,7 @@
 #   CMAKE_STRIP повинен бути встановлений (автоматично для cross-toolchain).
 #   Для strip_split також потрібен objcopy.
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # ---------------------------------------------------------------------------
 # _strip_find_objcopy

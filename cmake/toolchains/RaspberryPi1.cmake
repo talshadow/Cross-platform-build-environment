@@ -19,7 +19,7 @@
 #     [-DRPI_SYSROOT=/path/to/sysroot]
 #     [-DRPI1_TOOLCHAIN_PREFIX=arm-linux-gnueabihf]
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # --- Цільова система -------------------------------------------------------
 set(CMAKE_SYSTEM_NAME      Linux)
