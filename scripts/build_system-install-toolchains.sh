@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# scripts/install-toolchains.sh
+# scripts/build_system-install-toolchains.sh
 #
 # Встановлює всі необхідні крос-компілятори для збірки під цільові платформи.
 # Підтримувані host-системи: Ubuntu 20.04, Ubuntu 24.04, Arch Linux
 #
 # Використання:
-#   chmod +x scripts/install-toolchains.sh
-#   ./scripts/install-toolchains.sh [ВАРІАНТ...]
+#   chmod +x scripts/build_system-install-toolchains.sh
+#   ./scripts/build_system-install-toolchains.sh [ВАРІАНТ...]
 #
 # Варіанти:
 #   all       — встановити все (за замовчуванням)

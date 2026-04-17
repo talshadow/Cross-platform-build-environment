@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/sync-sysroot.sh
+# scripts/build_system-sync-sysroot.sh
 #
 # Синхронізує sysroot з живого Raspberry Pi по SSH (rsync).
 # Підтримує інкрементне оновлення — повторні виклики лише додають зміни.
@@ -13,21 +13,21 @@
 #   - rsync (sudo apt install rsync  або  sudo pacman -S rsync)
 #
 # Використання:
-#   ./scripts/sync-sysroot.sh --host <IP> --dest <шлях> [ОПЦІЇ]
+#   ./scripts/build_system-sync-sysroot.sh --host <IP> --dest <шлях> [ОПЦІЇ]
 #
 # Приклади:
 #   # Мінімальний sysroot (заголовки + бібліотеки)
-#   ./scripts/sync-sysroot.sh --host 192.168.1.100 --dest /srv/rpi4-sysroot
+#   ./scripts/build_system-sync-sysroot.sh --host 192.168.1.100 --dest /srv/rpi4-sysroot
 #
 #   # З вказаним користувачем та SSH ключем
-#   ./scripts/sync-sysroot.sh \
+#   ./scripts/build_system-sync-sysroot.sh \
 #       --host 192.168.1.100 \
 #       --user pi \
 #       --key ~/.ssh/rpi_key \
 #       --dest /srv/rpi4-sysroot
 #
 #   # Синхронізація з паролем (без ключа, потрібен sshpass)
-#   ./scripts/sync-sysroot.sh --host 192.168.1.100 --dest /srv/rpi-sysroot --password
+#   ./scripts/build_system-sync-sysroot.sh --host 192.168.1.100 --dest /srv/rpi-sysroot --password
 
 set -euo pipefail
 
@@ -229,7 +229,7 @@ echo ""
 echo "Використання з CMake:"
 echo "  cmake --preset rpi4-release -DRPI_SYSROOT=${SYSROOT_DEST}"
 echo "  # або через build.sh:"
-echo "  ./scripts/build.sh rpi4-release -DRPI_SYSROOT=${SYSROOT_DEST}"
+echo "  ./scripts/build_system-build.sh rpi4-release -DRPI_SYSROOT=${SYSROOT_DEST}"
 
 if [[ ${#FAILED[@]} -gt 0 ]]; then
     echo ""

@@ -14,11 +14,11 @@ Yocto Linux з host-систем Ubuntu 20.04 / 24.04 та Arch Linux / CachyOS.
 ## Структура файлів
 
 Детальні специфікації:
-- [spec-presets.md](spec-presets.md) — формат і конвенції CMakePresets.json
-- [spec-external.md](spec-external.md) — контракти ExternalProject бібліотек
-- [spec-toolchain.md](spec-toolchain.md) — контракт toolchain файлів
-- [spec-modules.md](spec-modules.md) — повний API CMake модулів
-- [ide-setup.md](ide-setup.md) — налаштування Qt Creator та VS Code
+- [build_system-spec-presets.md](build_system-spec-presets.md) — формат і конвенції CMakePresets.json
+- [build_system-spec-external.md](build_system-spec-external.md) — контракти ExternalProject бібліотек
+- [build_system-spec-toolchain.md](build_system-spec-toolchain.md) — контракт toolchain файлів
+- [build_system-spec-modules.md](build_system-spec-modules.md) — повний API CMake модулів
+- [build_system-ide-setup.md](build_system-ide-setup.md) — налаштування Qt Creator та VS Code
 
 ---
 
@@ -82,9 +82,9 @@ SupportRaspberryPI/
 │
 ├── scripts/
 │   ├── install-toolchains.sh   # Встановити крос-компілятори (apt / pacman)
-│   ├── get-sysroot-rpi.sh      # Отримати sysroot для RPi (Docker/образ/SSH)
-│   ├── get-sysroot-yocto.sh    # Встановити/витягнути Yocto SDK sysroot
-│   ├── sync-sysroot.sh         # Синхронізувати sysroot з живого RPi
+│   ├── build_system-get-sysroot-rpi.sh      # Отримати sysroot для RPi (Docker/образ/SSH)
+│   ├── build_system-get-sysroot-yocto.sh    # Встановити/витягнути Yocto SDK sysroot
+│   ├── build_system-sync-sysroot.sh         # Синхронізувати sysroot з живого RPi
 │   ├── build.sh                # Обгортка над cmake --preset
 │   └── deploy.sh               # Розгортання по SSH
 │
@@ -92,14 +92,14 @@ SupportRaspberryPI/
 ├── tests/                      # Тести (GTest, ctest)
 │
 └── docs/
-    ├── overview.md             # Цей файл
-    ├── toolchains.md           # Детальний опис toolchain файлів
-    ├── getting-started.md      # Покрокова інструкція
-    ├── ide-setup.md            # Qt Creator та VS Code: пресети, IntelliSense, remote debug
-    ├── spec-presets.md         # Специфікація CMakePresets.json: конвенції, чеклист
-    ├── spec-external.md        # Специфікація Lib*.cmake: контракти, API Common.cmake
-    ├── spec-toolchain.md       # Специфікація toolchain файлів: вимоги, заборони
-    └── spec-modules.md         # Специфікація cmake/modules: повний API
+    ├── build_system-overview.md             # Цей файл
+    ├── build_system-toolchains.md           # Детальний опис toolchain файлів
+    ├── build_system-getting-started.md      # Покрокова інструкція
+    ├── build_system-ide-setup.md            # Qt Creator та VS Code: пресети, IntelliSense, remote debug
+    ├── build_system-spec-presets.md         # Специфікація CMakePresets.json: конвенції, чеклист
+    ├── build_system-spec-external.md        # Специфікація Lib*.cmake: контракти, API Common.cmake
+    ├── build_system-spec-toolchain.md       # Специфікація toolchain файлів: вимоги, заборони
+    └── build_system-spec-modules.md         # Специфікація cmake/modules: повний API
 ```
 
 ---
@@ -113,7 +113,7 @@ Host (Ubuntu / Arch / CachyOS)
 │      apt install gcc-aarch64-linux-gnu ...     # Ubuntu
 │      pacman -S aarch64-linux-gnu-gcc ...       # Arch / CachyOS
 │
-├─ [2] get-sysroot-rpi.sh / get-sysroot-yocto.sh
+├─ [2] build_system-get-sysroot-rpi.sh / build_system-get-sysroot-yocto.sh
 │      → /srv/rpi4-sysroot/
 │           ├── lib/
 │           ├── usr/include/
@@ -171,7 +171,7 @@ Host (Ubuntu / Arch / CachyOS)
 Посилання `/lib/...` — абсолютне відносно **хост-системи**, а не sysroot.
 Лінкер крос-компілятора його не знайде.
 
-Скрипти `sync-sysroot.sh` та `get-sysroot-rpi.sh` автоматично перетворюють
+Скрипти `build_system-sync-sysroot.sh` та `build_system-get-sysroot-rpi.sh` автоматично перетворюють
 такі посилання на відносні через `fixup_symlinks()`.
 
 ---

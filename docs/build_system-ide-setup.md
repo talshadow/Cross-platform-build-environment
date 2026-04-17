@@ -248,7 +248,7 @@ CMake: Select Build Preset
     {
       "label": "Deploy to RPi",
       "type": "shell",
-      "command": "./scripts/deploy.sh --preset rpi4-release --host 192.168.1.100 --user pi",
+      "command": "./scripts/build_system-deploy.sh --preset rpi4-release --host 192.168.1.100 --user pi",
       "group": "none"
     }
   ]

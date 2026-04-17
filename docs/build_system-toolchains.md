@@ -117,7 +117,7 @@ cmake --preset rpi1-release -DRPI1_TOOLCHAIN_PREFIX=/opt/rpi-tools/arm-linux-gnu
 source /opt/poky/5.0/environment-setup-cortexa72-poky-linux
 
 # 2. Перевірити
-./scripts/get-sysroot-yocto.sh --method check
+./scripts/build_system-get-sysroot-yocto.sh --method check
 
 # 3. Зібрати
 cmake --preset yocto-release
