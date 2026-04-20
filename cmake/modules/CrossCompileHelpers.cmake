@@ -7,6 +7,28 @@
 #   include(CrossCompileHelpers)
 
 # ---------------------------------------------------------------------------
+# cmake_bool_to_onoff
+#
+# Перетворює будь-яке CMake bool-значення (TRUE/FALSE/1/0/YES/NO/ON/OFF)
+# на рядок "ON" або "OFF".
+#
+# cmake_bool_to_onoff(<value> <out_var>)
+#   value   — значення або ім'я змінної
+#   out_var — змінна куди записується рядок "ON" або "OFF"
+#
+# Використання:
+#   cmake_bool_to_onoff(${PLATFORM_X86_64} MY_VAR)   # → "ON" або "OFF"
+#   cmake_bool_to_onoff(PLATFORM_X86_64    MY_VAR)   # те саме через ім'я змінної
+# ---------------------------------------------------------------------------
+function(cmake_bool_to_onoff value out_var)
+    if(${value})
+        set(${out_var} ON PARENT_SCOPE)
+    else()
+        set(${out_var} OFF PARENT_SCOPE)
+    endif()
+endfunction()
+
+# ---------------------------------------------------------------------------
 # cross_check_cxx_flag
 #
 # Перевіряє, чи підтримує компілятор прапор, і додає його до таргету.
