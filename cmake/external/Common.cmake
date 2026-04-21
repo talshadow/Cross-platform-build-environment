@@ -299,14 +299,36 @@ function(ep_imported_interface target inc_dir)
 endfunction()
 
 # ---------------------------------------------------------------------------
+# _ep_make_sync_target(<ep_name>)
+#
+# Внутрішня функція. Створює non-IMPORTED INTERFACE-бібліотеку
+# _ep_sync_<ep_name> — носій залежності від EP для споживачів.
+#
+# Проблема: add_dependencies(IMPORTED_target ep) НЕ поширюється через
+# target_link_libraries на споживачів — їхні compile/link кроки не чекають EP.
+# Рішення: non-IMPORTED INTERFACE-бібліотека в INTERFACE_LINK_LIBRARIES
+# пропагується через target_link_libraries і CMake включає її utility-deps
+# (тобто залежність від EP) в ORDER_ONLY для compile і link кроків споживача.
+# ---------------------------------------------------------------------------
+function(_ep_make_sync_target ep_name)
+    set(_sync _ep_sync_${ep_name})
+    if(NOT TARGET ${_sync})
+        add_library(${_sync} INTERFACE)
+        add_dependencies(${_sync} ${ep_name})
+    endif()
+endfunction()
+
+# ---------------------------------------------------------------------------
 # ep_imported_library_from_ep(<target> <ep_name> <lib_path> <inc_dir>)
 #
-# Як ep_imported_library, але додає add_dependencies на ExternalProject.
+# Як ep_imported_library, але з залежністю від ExternalProject.
 # Виклик ПІСЛЯ ExternalProject_Add.
 # ---------------------------------------------------------------------------
 function(ep_imported_library_from_ep target ep_name lib_path inc_dir)
     ep_imported_library(${target} "${lib_path}" "${inc_dir}")
-    add_dependencies(${target} ${ep_name})
+    _ep_make_sync_target(${ep_name})
+    set_property(TARGET ${target} APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES _ep_sync_${ep_name})
 endfunction()
 
 # ---------------------------------------------------------------------------
@@ -316,7 +338,9 @@ endfunction()
 # ---------------------------------------------------------------------------
 function(ep_imported_interface_from_ep target ep_name inc_dir)
     ep_imported_interface(${target} "${inc_dir}")
-    add_dependencies(${target} ${ep_name})
+    _ep_make_sync_target(${ep_name})
+    set_property(TARGET ${target} APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES _ep_sync_${ep_name})
 endfunction()
 
 # ---------------------------------------------------------------------------
