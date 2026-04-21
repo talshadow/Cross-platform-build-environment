@@ -57,6 +57,7 @@ set(_sb_all_lib_eps
     boostsml_ep
     easyprofiler_ep
     ncnn_ep
+    rpclib_ep
     libfmt_ep
     onetbb_ep
     libir_ep
@@ -127,16 +128,11 @@ endforeach()
 # ---------------------------------------------------------------------------
 # Основний проєкт як ExternalProject
 # ---------------------------------------------------------------------------
-set(_sb_main_depends "")
-if(_sb_existing_eps)
-    set(_sb_main_depends DEPENDS ${_sb_existing_eps})
-endif()
 
 ExternalProject_Add(main_project_ep
     SOURCE_DIR  "${CMAKE_SOURCE_DIR}"
     BINARY_DIR  "${CMAKE_BINARY_DIR}/main_project"
     CMAKE_ARGS  ${_sb_main_cmake_args}
-    ${_sb_main_depends}
     # Не встановлюємо основний проєкт — він збирається in-place
     INSTALL_COMMAND ""
     # Завжди перебудовуємо якщо викликано cmake --build
@@ -144,6 +140,17 @@ ExternalProject_Add(main_project_ep
     LOG_CONFIGURE ON
     LOG_BUILD     ON
 )
+
+# ExternalProject_Add(DEPENDS ...) прив'язує залежності тільки до кроку download.
+# З BUILD_ALWAYS ON ninja завжди запускає build-крок. Якщо configure/download
+# стемпи існують з попереднього запуску, ninja вважає весь ланцюжок задоволеним
+# і може запустити build до завершення EP-залежностей.
+# ExternalProject_Add_StepDependencies прив'язує залежності безпосередньо до
+# потрібного кроку — той самий підхід що і для міжEP залежностей у ExternalDeps.cmake.
+if(_sb_existing_eps)
+    ExternalProject_Add_StepDependencies(main_project_ep configure ${_sb_existing_eps})
+    ExternalProject_Add_StepDependencies(main_project_ep build    ${_sb_existing_eps})
+endif()
 
 message(STATUS "[SuperBuild] Для збірки: cmake --build ${CMAKE_BINARY_DIR}")
 message(STATUS "[SuperBuild] Результат основного проєкту: ${CMAKE_BINARY_DIR}/main_project/")
