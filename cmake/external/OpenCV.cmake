@@ -101,7 +101,9 @@ macro(_ocv_make_imported_targets ep_name_or_empty)
                 INTERFACE_INCLUDE_DIRECTORIES "${_ocv_inc_dir};${_ocv_prefix}/include"
             )
             if(ep_name_or_empty AND TARGET ${ep_name_or_empty})
-                add_dependencies(OpenCV::${_mod} ${ep_name_or_empty})
+                _ep_make_sync_target(${ep_name_or_empty})
+                set_property(TARGET OpenCV::${_mod} APPEND PROPERTY
+                    INTERFACE_LINK_LIBRARIES _ep_sync_${ep_name_or_empty})
             endif()
         endif()
     endforeach()
