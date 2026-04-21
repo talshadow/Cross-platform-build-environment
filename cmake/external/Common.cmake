@@ -274,6 +274,7 @@ function(ep_imported_library target lib_path inc_dir)
     if(TARGET ${target})
         return()
     endif()
+    file(MAKE_DIRECTORY "${inc_dir}")
     add_library(${target} SHARED IMPORTED GLOBAL)
     set_target_properties(${target} PROPERTIES
         IMPORTED_LOCATION             "${lib_path}"
@@ -290,6 +291,7 @@ function(ep_imported_interface target inc_dir)
     if(TARGET ${target})
         return()
     endif()
+    file(MAKE_DIRECTORY "${inc_dir}")
     add_library(${target} INTERFACE IMPORTED GLOBAL)
     set_target_properties(${target} PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${inc_dir}"

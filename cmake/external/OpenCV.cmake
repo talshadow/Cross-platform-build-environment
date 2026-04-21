@@ -7,9 +7,10 @@
 #   JPEG::JPEG, PNG::PNG, TIFF::TIFF, OpenSSL::SSL
 #
 # Provides imported targets (після першої успішної збірки — через find_package):
-#   opencv_core, opencv_imgproc, opencv_imgcodecs, opencv_highgui,
-#   opencv_videoio, opencv_video, opencv_features2d, opencv_calib3d,
-#   opencv_objdetect, opencv_dnn, opencv_ml, opencv_flann, opencv_photo
+#   OpenCV::opencv_core, OpenCV::opencv_imgproc, OpenCV::opencv_imgcodecs,
+#   OpenCV::opencv_highgui, OpenCV::opencv_videoio, OpenCV::opencv_video,
+#   OpenCV::opencv_features2d, OpenCV::opencv_calib3d, OpenCV::opencv_objdetect,
+#   OpenCV::opencv_dnn, OpenCV::opencv_ml, OpenCV::opencv_flann, OpenCV::opencv_photo
 #
 # При першій збірці (бібліотека ще не встановлена) — placeholder targets
 # з майбутніми шляхами. Після `cmake --build` повторна конфігурація
@@ -86,19 +87,31 @@ set(_ocv_modules
     opencv_photo
 )
 
-# Хелпер: створює imported targets для вже встановленого OpenCV
+# Хелпер: створює OpenCV:: IMPORTED targets для вже встановленого або EP OpenCV
 macro(_ocv_make_imported_targets ep_name_or_empty)
+    # CMake 3.28+ валідує INTERFACE_INCLUDE_DIRECTORIES при конфігурації.
+    # Для placeholder-targets (EP ще не зібрано) директорії можуть не існувати.
+    file(MAKE_DIRECTORY "${_ocv_inc_dir}" "${_ocv_prefix}/include")
     foreach(_mod ${_ocv_modules})
-        if(NOT TARGET ${_mod})
+        if(NOT TARGET OpenCV::${_mod})
             set(_mod_lib "${_ocv_lib_dir}/lib${_mod}.so")
-            add_library(${_mod} SHARED IMPORTED GLOBAL)
-            set_target_properties(${_mod} PROPERTIES
+            add_library(OpenCV::${_mod} SHARED IMPORTED GLOBAL)
+            set_target_properties(OpenCV::${_mod} PROPERTIES
                 IMPORTED_LOCATION             "${_mod_lib}"
                 INTERFACE_INCLUDE_DIRECTORIES "${_ocv_inc_dir};${_ocv_prefix}/include"
             )
             if(ep_name_or_empty AND TARGET ${ep_name_or_empty})
-                add_dependencies(${_mod} ${ep_name_or_empty})
+                add_dependencies(OpenCV::${_mod} ${ep_name_or_empty})
             endif()
+        endif()
+    endforeach()
+endmacro()
+
+# Хелпер: OpenCV:: ALIAS для targets, які створює сам OpenCV CMake config (opencv_core тощо)
+macro(_ocv_make_namespace_aliases)
+    foreach(_mod ${_ocv_modules})
+        if(TARGET ${_mod} AND NOT TARGET OpenCV::${_mod})
+            add_library(OpenCV::${_mod} ALIAS ${_mod})
         endif()
     endforeach()
 endmacro()
@@ -108,12 +121,14 @@ endmacro()
 if(USE_SYSTEM_OPENCV)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
     find_package(OpenCV REQUIRED)
+    _ocv_make_namespace_aliases()
     message(STATUS "[OpenCV] Системна бібліотека версії ${OpenCV_VERSION}")
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(OpenCV QUIET HINTS "${_ocv_prefix}" NO_DEFAULT_PATH)
     if(OpenCV_FOUND)
+        _ocv_make_namespace_aliases()
         message(STATUS "[OpenCV] Знайдено готову бібліотеку у ${_ocv_prefix} (${OpenCV_VERSION})")
 
     elseif(EXISTS "${_ocv_core}")
