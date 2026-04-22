@@ -134,13 +134,13 @@ function(_ep_write_sysroot_lib_script lib_dir script_name soname)
         return()
     endif()
 
-    cmake_path(RELATIVE_PATH _found
-        BASE_DIRECTORY "${CMAKE_SYSROOT}"
-        OUTPUT_VARIABLE _rel)
-    set(_script_path "/${_rel}")
-
+    # Використовуємо повний абсолютний шлях до файлу в sysroot.
+    # Наш linker script знаходиться ПОЗА sysroot (в EXTERNAL_INSTALL_PREFIX),
+    # тому GNU ld НЕ застосовує --sysroot-rewriting до шляхів всередині нього.
+    # Абсолютний шлях типу /srv/rpi4-sysroot/lib/.../libc.so.6 існує на хості
+    # і linker відкриває його напряму — отримуємо символи цільової GLIBC.
     set(_script "${lib_dir}/${script_name}")
-    set(_content "GROUP ( ${_script_path} )\n")
+    set(_content "GROUP ( ${_found} )\n")
     if(EXISTS "${_script}")
         file(READ "${_script}" _existing)
         if(_existing STREQUAL _content)
@@ -149,7 +149,7 @@ function(_ep_write_sysroot_lib_script lib_dir script_name soname)
     endif()
 
     file(WRITE "${_script}" "${_content}")
-    message(STATUS "[Common] Створено ${_script} → ${_script_path} (відносно sysroot)")
+    message(STATUS "[Common] Створено ${_script} → ${_found}")
 endfunction()
 
 function(_ep_create_sysroot_lib_scripts)
