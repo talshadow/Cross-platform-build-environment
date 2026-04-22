@@ -73,8 +73,8 @@ unset(_RPI5_CC_VERSIONED)
 #                      але явне задання покращує діагностику)
 set(_RPI5_CPU_FLAGS "-mcpu=cortex-a76+crc+simd+crypto+dotprod")
 
-set(CMAKE_C_FLAGS_INIT   "${_RPI5_CPU_FLAGS}" CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS_INIT "${_RPI5_CPU_FLAGS}" CACHE INTERNAL "")
+set(CMAKE_C_FLAGS_INIT   "${_RPI5_CPU_FLAGS} -std=c11"   CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "${_RPI5_CPU_FLAGS} -std=c++20" CACHE INTERNAL "")
 
 # --- Sysroot ---------------------------------------------------------------
 set(RPI_SYSROOT "" CACHE PATH

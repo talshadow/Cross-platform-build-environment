@@ -45,7 +45,7 @@ option(BUILD_TESTS    "Збирати тести"                ON)
 option(ENABLE_ASAN    "Увімкнути AddressSanitizer"   OFF)
 option(ENABLE_UBSAN   "Увімкнути UBSanitizer"        OFF)
 option(ENABLE_TSAN    "Увімкнути ThreadSanitizer"    OFF)
-option(ENABLE_LTO     "Увімкнути Link-Time Optimization" OFF)
+option(ENABLE_LTO     "Увімкнути Link-Time Optimization" ON)
 
 # ---------------------------------------------------------------------------
 # LTO

@@ -35,7 +35,7 @@ set(_RPI2_CPU_FLAGS
     "-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -mthumb")
 
 set(CMAKE_C_FLAGS_INIT   "${_RPI2_CPU_FLAGS}" CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS_INIT "${_RPI2_CPU_FLAGS}" CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "${_RPI2_CPU_FLAGS} -std=c++20" CACHE INTERNAL "")
 
 # --- Sysroot ---------------------------------------------------------------
 set(RPI_SYSROOT "" CACHE PATH

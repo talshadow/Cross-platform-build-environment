@@ -91,6 +91,30 @@ else()
         # Генеруємо meson cross-file
         _meson_generate_cross_file(_libpisp_cross_args)
 
+        # libpisp-специфічний overlay.
+        # Аналогічно libcamera: -Dcpp_args= у CLI перекрив би cpp_args з cross-file
+        # (включно з preamble для __GLIBC_USE_C2X_STRTOL), тому використовуємо overlay.
+        set(_libpisp_overlay_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-libpisp-overlay.ini")
+        if(MESON_CROSS_CXX_ARGS)
+            file(WRITE "${_libpisp_overlay_file}"
+                "[built-in options]\n"
+                "cpp_args = [${MESON_CROSS_CXX_ARGS}, '-Wno-unused-parameter']\n"
+                "c_args = [${MESON_CROSS_C_ARGS}]\n"
+                "c_link_args = [${MESON_CROSS_LINK_ARGS}]\n"
+                "cpp_link_args = [${MESON_CROSS_LINK_ARGS}]\n"
+            )
+        else()
+            file(WRITE "${_libpisp_overlay_file}"
+                "[built-in options]\n"
+                "cpp_args = ['-Wno-unused-parameter', '-I${EXTERNAL_INSTALL_PREFIX}/include']\n"
+            )
+        endif()
+        if(CMAKE_CROSSCOMPILING)
+            list(APPEND _libpisp_cross_args "--cross-file"  "${_libpisp_overlay_file}")
+        else()
+            list(APPEND _libpisp_cross_args "--native-file" "${_libpisp_overlay_file}")
+        endif()
+
         # Boost include dir для передачі в Meson
         set(_libpisp_boost_inc "")
         if(TARGET Boost::headers)
@@ -115,7 +139,6 @@ else()
                     --prefix=${EXTERNAL_INSTALL_PREFIX}
                     --libdir=lib
                     --buildtype=${_libpisp_meson_bt}
-                    -Dcpp_args=-Wno-unused-parameter
                     <BINARY_DIR>
                     <SOURCE_DIR>
             BUILD_COMMAND
@@ -139,6 +162,7 @@ else()
         unset(_libpisp_meson)
         unset(_libpisp_ninja)
         unset(_libpisp_cross_args)
+        unset(_libpisp_overlay_file)
         unset(_libpisp_ep_deps)
         unset(_libpisp_boost_inc)
     endif()

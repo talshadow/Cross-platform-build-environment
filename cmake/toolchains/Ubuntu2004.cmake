@@ -60,7 +60,7 @@ unset(_GCC_NM)
 # --- Прапори оптимізації для x86_64 --------------------------------------
 # -march=x86-64    — базовий x86_64 (сумісність з будь-яким x86_64)
 # -mtune=generic   — оптимізація для "середнього" x86_64 процесора
-set(CMAKE_C_FLAGS_INIT   "-march=x86-64 -mtune=generic" CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS_INIT "-march=x86-64 -mtune=generic" CACHE INTERNAL "")
+set(CMAKE_C_FLAGS_INIT   "-march=x86-64 -mtune=generic -std=c11"   CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "-march=x86-64 -mtune=generic -std=c++20" CACHE INTERNAL "")
 
 message(STATUS "[Ubuntu2004] Компілятор: ${CMAKE_C_COMPILER}, AR: ${CMAKE_AR}")

@@ -36,7 +36,7 @@ cross_toolchain_find_compiler(
 set(_RPI3_CPU_FLAGS "-mcpu=cortex-a53")
 
 set(CMAKE_C_FLAGS_INIT   "${_RPI3_CPU_FLAGS}" CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS_INIT "${_RPI3_CPU_FLAGS}" CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "${_RPI3_CPU_FLAGS} -std=c++20" CACHE INTERNAL "")
 
 # --- Sysroot ---------------------------------------------------------------
 set(RPI_SYSROOT "" CACHE PATH

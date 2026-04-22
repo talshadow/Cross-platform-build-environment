@@ -59,9 +59,9 @@ if(DEFINED ENV{CC})
     list(REMOVE_AT _CC_ARGS 0)
 
     set(CMAKE_C_COMPILER "${_CC_EXE}" CACHE FILEPATH "C compiler" FORCE)
-    # Прапори з $CC додаємо до початкових прапорів
+    # Прапори з $CC + базовий стандарт C11 (strict, без -D_GNU_SOURCE)
     string(JOIN " " _CC_FLAGS ${_CC_ARGS})
-    set(CMAKE_C_FLAGS_INIT "${_CC_FLAGS}" CACHE INTERNAL "")
+    set(CMAKE_C_FLAGS_INIT "${_CC_FLAGS} -std=c11" CACHE INTERNAL "")
 else()
     message(FATAL_ERROR
         "[Yocto] Змінна середовища CC не визначена.\n"
@@ -75,7 +75,7 @@ if(DEFINED ENV{CXX})
 
     set(CMAKE_CXX_COMPILER "${_CXX_EXE}" CACHE FILEPATH "C++ compiler" FORCE)
     string(JOIN " " _CXX_FLAGS ${_CXX_ARGS})
-    set(CMAKE_CXX_FLAGS_INIT "${_CXX_FLAGS}" CACHE INTERNAL "")
+    set(CMAKE_CXX_FLAGS_INIT "${_CXX_FLAGS} -std=c++20" CACHE INTERNAL "")
 else()
     message(FATAL_ERROR
         "[Yocto] Змінна середовища CXX не визначена.\n"

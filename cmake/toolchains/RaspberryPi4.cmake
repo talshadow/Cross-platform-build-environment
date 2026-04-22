@@ -113,8 +113,12 @@ set(_LOOP_FLAGS "-falign-functions=16 -floop-nest-optimize -ftree-loop-distribut
 # --- CMAKE_*_INIT для CMake-based збірок ---
 # Читаються CMake до кешу; автоматично передаються EP суб-збіркам через
 # -DCMAKE_TOOLCHAIN_FILE.
-set(CMAKE_C_FLAGS_INIT   "${_BASE_FLAGS}" CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS_INIT "${_BASE_FLAGS}" CACHE INTERNAL "")
+# -std=c11: strict C11 запобігає auto -D_GNU_SOURCE → glibc не ремапить
+# strtoul → __isoc23_strtoul@GLIBC_2.38 (відсутній у target glibc < 2.38).
+# -std=c++20: стандарт C++20 для C++. Для крос-збірок fix стосовно strtoul
+# для C++ забезпечується через preamble у Meson cross-file (Common.cmake).
+set(CMAKE_C_FLAGS_INIT   "${_BASE_FLAGS} -std=c11"   CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "${_BASE_FLAGS} -std=c++20" CACHE INTERNAL "")
 
 set(CMAKE_C_FLAGS_RELEASE_INIT           "-O2 -DNDEBUG -s ${_LOOP_FLAGS} ${_LTO_FLAGS}" CACHE INTERNAL "")
 set(CMAKE_CXX_FLAGS_RELEASE_INIT         "-O2 -DNDEBUG -s ${_LOOP_FLAGS} ${_LTO_FLAGS}" CACHE INTERNAL "")

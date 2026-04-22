@@ -106,8 +106,8 @@ endif()
 # --- Прапори оптимізації для x86_64 -----------------------------------------
 # -march=x86-64-v2 — розширений базовий x86_64 (SSE4.2, POPCNT)
 # -mtune=generic   — збалансована оптимізація
-set(CMAKE_C_FLAGS_INIT   "-march=x86-64-v2 -mtune=generic" CACHE INTERNAL "")
-set(CMAKE_CXX_FLAGS_INIT "-march=x86-64-v2 -mtune=generic" CACHE INTERNAL "")
+set(CMAKE_C_FLAGS_INIT   "-march=x86-64-v2 -mtune=generic -std=c11"   CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS_INIT "-march=x86-64-v2 -mtune=generic -std=c++20" CACHE INTERNAL "")
 
 unset(_clang_suffix)
 

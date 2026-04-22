@@ -152,6 +152,84 @@ function(_ep_write_sysroot_lib_script lib_dir script_name soname)
     message(STATUS "[Common] Створено ${_script} → ${_found}")
 endfunction()
 
+# Спеціальний хелпер для libc.so: включає libc_nonshared.a і ld-linux (AS_NEEDED),
+# точно як реальний Debian/Ubuntu linker script /usr/lib/<arch>/libc.so.
+function(_ep_write_libc_script lib_dir)
+    if(NOT CMAKE_LIBRARY_ARCHITECTURE)
+        message(WARNING "[Common] CMAKE_LIBRARY_ARCHITECTURE не встановлено — libc.so не створено.")
+        return()
+    endif()
+
+    # libc.so.6
+    set(_libc_so "")
+    foreach(_d "lib" "usr/lib")
+        set(_c "${CMAKE_SYSROOT}/${_d}/${CMAKE_LIBRARY_ARCHITECTURE}/libc.so.6")
+        if(EXISTS "${_c}")
+            set(_libc_so "${_c}")
+            break()
+        endif()
+    endforeach()
+    if(NOT _libc_so)
+        message(WARNING "[Common] libc.so.6 не знайдено у sysroot — libc.so не створено.")
+        return()
+    endif()
+
+    # libc_nonshared.a (зазвичай в /usr/lib/<arch>/)
+    set(_nonshared "")
+    foreach(_d "usr/lib" "lib")
+        set(_c "${CMAKE_SYSROOT}/${_d}/${CMAKE_LIBRARY_ARCHITECTURE}/libc_nonshared.a")
+        if(EXISTS "${_c}")
+            set(_nonshared "${_c}")
+            break()
+        endif()
+    endforeach()
+
+    # ld-linux (AS_NEEDED — не завжди потрібен, але входить до канонічного script)
+    set(_ldso "")
+    foreach(_d "lib" "usr/lib")
+        foreach(_n
+                "ld-linux-aarch64.so.1"
+                "ld-linux-armhf.so.3"
+                "ld-linux-arm.so.3"
+                "ld-linux-x86-64.so.2"
+                "ld-linux.so.2")
+            set(_c "${CMAKE_SYSROOT}/${_d}/${CMAKE_LIBRARY_ARCHITECTURE}/${_n}")
+            if(EXISTS "${_c}")
+                set(_ldso "${_c}")
+                break()
+            endif()
+        endforeach()
+        if(_ldso)
+            break()
+        endif()
+    endforeach()
+
+    # Будуємо GROUP ( libc.so.6 [nonshared] [AS_NEEDED ( ldso )] )
+    set(_group "${_libc_so}")
+    if(_nonshared)
+        string(APPEND _group " ${_nonshared}")
+    endif()
+    if(_ldso)
+        string(APPEND _group " AS_NEEDED ( ${_ldso} )")
+    endif()
+
+    set(_script "${lib_dir}/libc.so")
+    set(_content "GROUP ( ${_group} )\n")
+    if(EXISTS "${_script}")
+        file(READ "${_script}" _existing)
+        if(_existing STREQUAL _content)
+            return()
+        endif()
+    endif()
+
+    file(WRITE "${_script}" "${_content}")
+    if(_nonshared)
+        message(STATUS "[Common] Створено ${_script} → ${_libc_so} + libc_nonshared.a")
+    else()
+        message(STATUS "[Common] Створено ${_script} → ${_libc_so}")
+    endif()
+endfunction()
+
 function(_ep_create_sysroot_lib_scripts)
     if(NOT CMAKE_CROSSCOMPILING OR NOT CMAKE_SYSROOT)
         return()
@@ -160,8 +238,9 @@ function(_ep_create_sysroot_lib_scripts)
     set(_lib_dir "${EXTERNAL_INSTALL_PREFIX}/lib")
     file(MAKE_DIRECTORY "${_lib_dir}")
 
-    _ep_write_sysroot_lib_script("${_lib_dir}" libm.so libm.so.6)
-    _ep_write_sysroot_lib_script("${_lib_dir}" libc.so libc.so.6)
+    _ep_write_sysroot_lib_script("${_lib_dir}" libm.so      libm.so.6)
+    _ep_write_sysroot_lib_script("${_lib_dir}" libstdc++.so libstdc++.so.6)
+    _ep_write_libc_script("${_lib_dir}")
 endfunction()
 
 _ep_create_sysroot_lib_scripts()
@@ -806,6 +885,16 @@ function(_meson_generate_cross_file out_var)
         unset(_mc_extra_ldflags_list)
     endif()
 
+    # c_std = 'c11': GCC для C файлів у gnu17 (або не-explicit) mode автоматично
+    # передає -D_GNU_SOURCE що через features.h вмикає __GLIBC_USE_C2X_STRTOL=1
+    # і ремапить strtoul → __isoc23_strtoul@GLIBC_2.38. Strict c11 (без gnu) не
+    # додає -D_GNU_SOURCE → ремапінгу немає. Це базова вимога для крос-компіляції
+    # під target glibc < 2.38.
+    # cpp_std = 'c++20': для C++ -D_GNU_SOURCE завжди є (незалежно від стандарту);
+    # fix для C++ — через preamble у cpp_args (meson-cross-paths.ini). Тут c++20
+    # встановлюється як проєктний стандарт за замовченням.
+    string(APPEND _mc_builtin_options_section "c_std = 'c11'\ncpp_std = 'c++20'\n")
+
     if(CMAKE_SYSROOT)
         string(APPEND _mc_builtin_options_section
             "c_args = ['--sysroot=${CMAKE_SYSROOT}']\n"
@@ -891,10 +980,37 @@ endian = 'little'
                 ", '-Wl,-rpath-link,${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}'")
         endif()
 
+        # C++ preamble: виправляє ремапінг strtoul → __isoc23_strtoul@GLIBC_2.38.
+        #
+        # Проблема: aarch64-linux-gnu-g++ на Ubuntu 24.04 завжди передає -D_GNU_SOURCE
+        # до cc1plus (з spec-файлу компілятора). _GNU_SOURCE → _ISOC2X_SOURCE=1 →
+        # __GLIBC_USE_C2X_STRTOL=1 → stdlib.h ремапує strtoul → __isoc23_strtoul.
+        # Цей символ відсутній у glibc < 2.38 (Raspberry Pi OS, старі Yocto sysroot).
+        # -std=c++20 або -D__GLIBC_USE_C2X_STRTOL=0 не допомагають: features.h
+        # завжди #undef і перевизначає __GLIBC_USE_C2X_STRTOL після наших -D.
+        #
+        # Рішення (preamble trick): -include цього файлу → він включає <features.h>
+        # першим і виставляє include guard _FEATURES_H. Потім ми #undef/#define
+        # __GLIBC_USE_C2X_STRTOL=0. Усі подальші #include <features.h> (через
+        # stdlib.h, cstdlib тощо) — no-op через guard. Результат: strtoul
+        # компілюється як стандартний POSIX strtoul без asm-alias.
+        set(_mcp_preamble "${CMAKE_BINARY_DIR}/_ep_cfg/meson-cpp-preamble.h")
+        file(WRITE "${_mcp_preamble}"
+"/* Auto-generated: prevent Ubuntu 24.04 cross-compiler glibc C23 strtoul remapping.
+ * aarch64-linux-gnu-g++ spec auto-adds -D_GNU_SOURCE which via features.h enables
+ * __GLIBC_USE_C2X_STRTOL=1, remapping strtoul -> __isoc23_strtoul@GLIBC_2.38.
+ * That symbol is absent in target glibc < 2.38.  Fix: force features.h include guard
+ * before stdlib.h / cstdlib, then lock __GLIBC_USE_C2X_STRTOL to 0. */
+#include <features.h>
+#undef  __GLIBC_USE_C2X_STRTOL
+#define __GLIBC_USE_C2X_STRTOL 0
+")
+        set(_mcp_cpp_args "${_mcp_c_args}, '-include${_mcp_preamble}'")
+
         file(WRITE "${_cross_paths_file}"
 "[built-in options]
 c_args = [${_mcp_c_args}]
-cpp_args = [${_mcp_c_args}]
+cpp_args = [${_mcp_cpp_args}]
 c_link_args = [${_mcp_link_args}]
 cpp_link_args = [${_mcp_link_args}]
 ")
@@ -902,16 +1018,21 @@ cpp_link_args = [${_mcp_link_args}]
 
         # Виставляємо рядки аргументів у PARENT_SCOPE для використання в overlay-файлах.
         # Бібліотека може мати свій overlay з додатковими cpp_args (напр. -Wno-error=...).
-        # Щоб overlay не перезаписав --sysroot/-I/-L, він мусить містити ВСІ flags.
-        # Ці змінні дозволяють будувати overlay з повним набором флагів.
-        set(MESON_CROSS_C_ARGS     "${_mcp_c_args}"    PARENT_SCOPE)
+        # Щоб overlay не перезаписав --sysroot/-I/-L/-include, він мусить містити ВСІ flags.
+        # MESON_CROSS_C_ARGS   — для C файлів (без preamble)
+        # MESON_CROSS_CXX_ARGS — для C++ файлів (з preamble)
+        set(MESON_CROSS_C_ARGS     "${_mcp_c_args}"   PARENT_SCOPE)
+        set(MESON_CROSS_CXX_ARGS   "${_mcp_cpp_args}" PARENT_SCOPE)
         set(MESON_CROSS_LINK_ARGS  "${_mcp_link_args}" PARENT_SCOPE)
 
         unset(_mcp_c_args)
+        unset(_mcp_cpp_args)
         unset(_mcp_link_args)
+        unset(_mcp_preamble)
     else()
         # Без sysroot — очищаємо (нативна збірка)
         set(MESON_CROSS_C_ARGS    "" PARENT_SCOPE)
+        set(MESON_CROSS_CXX_ARGS  "" PARENT_SCOPE)
         set(MESON_CROSS_LINK_ARGS "" PARENT_SCOPE)
     endif()
 
