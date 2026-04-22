@@ -119,34 +119,45 @@ else()
         # тому overlay МУСИТЬ містити ВСІ cpp_args (не тільки libcamera-специфічні).
         # MESON_CROSS_C_ARGS/MESON_CROSS_LINK_ARGS виставляються _meson_generate_cross_file.
         #
-        # Додатковий прапор: -Wno-error=array-bounds
-        # Пригнічує GCC 12 false-positive (hdr.cpp:119):
-        # libcamera будується з -Werror, і GCC 12 помилково генерує цей варнінг
-        # при ініціалізації std::vector<uint> через { 0 }.
+        # Додаткові прапори:
+        # -Wno-error=array-bounds     — GCC 12 false-positive (hdr.cpp:119):
+        #                               libcamera будується з -Werror, і GCC 12
+        #                               помилково генерує цей варнінг при ініціалізації
+        #                               std::vector<uint> через { 0 }.
+        # -D__GLIBC_USE_ISOC23=0      — GCC 13+ на Ubuntu 24.04 транслює strtoul/strtod/etc
+        #                               у __isoc23_*@GLIBC_2.38 (C23 варіанти) через
+        #                               glibc headers. Цільовий RPi має GLIBC ≤ 2.36 —
+        #                               символів @GLIBC_2.38 немає → "undefined reference"
+        #                               при лінкуванні фінального бінарника.
+        set(_libcamera_extra_flags "'-Wno-error=array-bounds', '-D__GLIBC_USE_ISOC23=0'")
         set(_libcamera_overlay_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-libcamera-overlay.ini")
         if(MESON_CROSS_C_ARGS)
-            # Крос-компіляція: повний набір cpp_args + libcamera-специфічний прапор
-            set(_overlay_cpp_args "${MESON_CROSS_C_ARGS}, '-Wno-error=array-bounds'")
+            # Крос-компіляція: повний набір cpp_args + libcamera-специфічні прапори
+            set(_overlay_cpp_args "${MESON_CROSS_C_ARGS}, ${_libcamera_extra_flags}")
+            set(_overlay_c_args   "${MESON_CROSS_C_ARGS}, '-D__GLIBC_USE_ISOC23=0'")
             set(_overlay_link_args "${MESON_CROSS_LINK_ARGS}")
             file(WRITE "${_libcamera_overlay_file}"
                 "[built-in options]
                 cpp_args = [${_overlay_cpp_args}]
-                c_args = [${MESON_CROSS_C_ARGS}]
+                c_args = [${_overlay_c_args}]
                 c_link_args = [${_overlay_link_args}]
                 cpp_link_args = [${_overlay_link_args}]
                 ")
             unset(_overlay_cpp_args)
+            unset(_overlay_c_args)
             unset(_overlay_link_args)
         else()
-            # Нативна збірка: libcamera-специфічний прапор + include нашого prefix.
+            # Нативна збірка: libcamera-специфічні прапори + include нашого prefix.
             # Workaround: apps/common/meson.build додає event_loop.cpp коли libevent
             # знайдено, але не оголошує libevent як dep apps_lib — тому -I не
             # потрапляє в команду компіляції автоматично.
             file(WRITE "${_libcamera_overlay_file}"
                 "[built-in options]
-                cpp_args = ['-Wno-error=array-bounds', '-I${EXTERNAL_INSTALL_PREFIX}/include']
+                cpp_args = [${_libcamera_extra_flags}, '-I${EXTERNAL_INSTALL_PREFIX}/include']
+                c_args = ['-D__GLIBC_USE_ISOC23=0']
                 ")
         endif()
+        unset(_libcamera_extra_flags)
         # При нативній збірці використовуємо --native-file щоб не активувати
         # cross-compilation mode у meson (--cross-file завжди його вмикає).
         if(CMAKE_CROSSCOMPILING)
