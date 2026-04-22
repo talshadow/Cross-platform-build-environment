@@ -86,21 +86,72 @@ message(STATUS "[ExternalDeps] Install prefix: ${EXTERNAL_INSTALL_PREFIX}")
 # ---------------------------------------------------------------------------
 # _ep_create_sysroot_lib_scripts()
 #
-# При крос-компіляції створює GNU ld linker script libm.so у
-# EXTERNAL_INSTALL_PREFIX/lib/ що вказує на реальний libm.so.6 із sysroot.
+# При крос-компіляції створює GNU ld linker scripts у EXTERNAL_INSTALL_PREFIX/lib/:
+#   libm.so  → sysroot libm.so.6
+#   libc.so  → sysroot libc.so.6
 #
 # Проблема: Ubuntu 24.04 host GCC 13+ компілює виклики strtoul/strtod/etc
-# у __isoc23_strtoul@GLIBC_2.38 (C23 варіанти). EP-бібліотеки, зібрані на
-# host і злінковані проти host libm, тягнуть ці символи. Цільова система
+# у __isoc23_*@GLIBC_2.38 (C23 варіанти). EP-бібліотеки, зібрані на host
+# і злінковані проти host libc/libm, тягнуть ці символи. Цільова система
 # (наприклад RPi з GLIBC 2.36) їх не має → "undefined reference".
 #
-# Рішення: linker script libm.so в EXTERNAL_INSTALL_PREFIX/lib/ перехоплює
-# пошук libm і перенаправляє на sysroot libm.so.6, що містить лише символи
-# доступні на цільовій системі. Оскільки EXTERNAL_INSTALL_PREFIX стоїть
-# першим у CMAKE_PREFIX_PATH, цей скрипт знаходиться раніше за host libm.
+# Рішення: linker scripts у EXTERNAL_INSTALL_PREFIX/lib/ перехоплюють пошук
+# libc/libm і перенаправляють на sysroot-версії з правильними символами.
+# EXTERNAL_INSTALL_PREFIX стоїть першим у CMAKE_PREFIX_PATH → знаходиться
+# раніше за host бібліотеки.
+#
+# GNU ld з --sysroot додає sysroot-префікс до абсолютних шляхів у linker
+# scripts, тому GROUP() містить шлях ВІДНОСНО sysroot-кореня.
 #
 # Викликається автоматично під час конфігурації — ручний виклик не потрібен.
 # ---------------------------------------------------------------------------
+
+# Внутрішній хелпер: знаходить <soname> у sysroot і створює linker script <script_name>.so
+function(_ep_write_sysroot_lib_script lib_dir script_name soname)
+    set(_candidates "")
+    if(CMAKE_LIBRARY_ARCHITECTURE)
+        list(APPEND _candidates
+            "${CMAKE_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}/${soname}"
+            "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/${soname}"
+        )
+    endif()
+    list(APPEND _candidates
+        "${CMAKE_SYSROOT}/lib/${soname}"
+        "${CMAKE_SYSROOT}/usr/lib/${soname}"
+    )
+
+    set(_found "")
+    foreach(_c IN LISTS _candidates)
+        if(EXISTS "${_c}")
+            set(_found "${_c}")
+            break()
+        endif()
+    endforeach()
+
+    if(NOT _found)
+        message(WARNING "[Common] ${soname} не знайдено у sysroot '${CMAKE_SYSROOT}' — "
+            "${script_name} linker script не створено.")
+        return()
+    endif()
+
+    cmake_path(RELATIVE_PATH _found
+        BASE_DIRECTORY "${CMAKE_SYSROOT}"
+        OUTPUT_VARIABLE _rel)
+    set(_script_path "/${_rel}")
+
+    set(_script "${lib_dir}/${script_name}")
+    set(_content "GROUP ( ${_script_path} )\n")
+    if(EXISTS "${_script}")
+        file(READ "${_script}" _existing)
+        if(_existing STREQUAL _content)
+            return()
+        endif()
+    endif()
+
+    file(WRITE "${_script}" "${_content}")
+    message(STATUS "[Common] Створено ${_script} → ${_script_path} (відносно sysroot)")
+endfunction()
+
 function(_ep_create_sysroot_lib_scripts)
     if(NOT CMAKE_CROSSCOMPILING OR NOT CMAKE_SYSROOT)
         return()
@@ -109,46 +160,8 @@ function(_ep_create_sysroot_lib_scripts)
     set(_lib_dir "${EXTERNAL_INSTALL_PREFIX}/lib")
     file(MAKE_DIRECTORY "${_lib_dir}")
 
-    # Шукаємо libm.so.6 у sysroot — перевіряємо multiarch і звичайні шляхи
-    set(_libm_candidates "")
-    if(CMAKE_LIBRARY_ARCHITECTURE)
-        list(APPEND _libm_candidates
-            "${CMAKE_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libm.so.6"
-            "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libm.so.6"
-        )
-    endif()
-    list(APPEND _libm_candidates
-        "${CMAKE_SYSROOT}/lib/libm.so.6"
-        "${CMAKE_SYSROOT}/usr/lib/libm.so.6"
-    )
-
-    set(_libm_path "")
-    foreach(_c IN LISTS _libm_candidates)
-        if(EXISTS "${_c}")
-            set(_libm_path "${_c}")
-            break()
-        endif()
-    endforeach()
-
-    if(NOT _libm_path)
-        message(WARNING "[Common] libm.so.6 не знайдено у sysroot '${CMAKE_SYSROOT}'. "
-            "Шляхи перевірено: ${_libm_candidates}. "
-            "EP-бібліотеки можуть тягнути host GLIBC_2.38 символи.")
-        return()
-    endif()
-
-    set(_script "${_lib_dir}/libm.so")
-    # Перестворюємо якщо вказує не туди (sysroot міг змінитись)
-    set(_expected_content "GROUP ( ${_libm_path} )\n")
-    if(EXISTS "${_script}")
-        file(READ "${_script}" _existing)
-        if(_existing STREQUAL _expected_content)
-            return()
-        endif()
-    endif()
-
-    file(WRITE "${_script}" "${_expected_content}")
-    message(STATUS "[Common] Створено ${_script} → ${_libm_path}")
+    _ep_write_sysroot_lib_script("${_lib_dir}" libm.so libm.so.6)
+    _ep_write_sysroot_lib_script("${_lib_dir}" libc.so libc.so.6)
 endfunction()
 
 _ep_create_sysroot_lib_scripts()
