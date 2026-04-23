@@ -192,9 +192,14 @@ function(_ep_binarydeps_recurse full_path depth)
         elseif(_found_tc)
             message(STATUS "${_indent}[TOOLCHAIN] ${_soname}  (${_found_tc})")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_TC "${_soname}")
-            set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_DEPLOY_PATHS "${_found_tc}")
-            math(EXPR _next "${depth} + 1")
-            _ep_binarydeps_recurse("${_found_tc}" ${_next})
+            # При крос-збірці (CMAKE_SYSROOT встановлено) toolchain runtime libs
+            # (libc, libstdc++, libgcc_s тощо) вже є на цільовій платформі —
+            # деплоїти їх не потрібно і шкідливо (конфлікт версій).
+            if(NOT CMAKE_SYSROOT)
+                set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_DEPLOY_PATHS "${_found_tc}")
+                math(EXPR _next "${depth} + 1")
+                _ep_binarydeps_recurse("${_found_tc}" ${_next})
+            endif()
         elseif(_found_sys)
             message(STATUS "${_indent}[SYSTEM]    ${_soname}  (${_found_sys})")
             set_property(GLOBAL APPEND PROPERTY _EP_BINARYDEPS_SUMMARY_SYS "${_soname}")

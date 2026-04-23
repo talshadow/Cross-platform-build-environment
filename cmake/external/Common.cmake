@@ -508,6 +508,45 @@ function(ep_imported_interface_from_ep target ep_name inc_dir)
 endfunction()
 
 # ---------------------------------------------------------------------------
+# ep_target_add_compile_deps(<target>)
+#
+# Явна ORDER_ONLY залежність між compile-кроком <target> та EP-sync цілями
+# бібліотек, від яких він залежить.
+#
+# Причина: CMake НЕ propagates utility-deps з INTERFACE_LINK_LIBRARIES
+# IMPORTED-таргетів на compile-кроки споживача. Ninja починає компіляцію
+# до того як EP встановив заголовки. Цей виклик виправляє gap через явний
+# add_dependencies(<target> _ep_sync_X) для кожної ep_sync цілі.
+#
+# Бере список бібліотек з LINK_LIBRARIES самого <target> — викликати після
+# target_link_libraries.
+#
+# Використання:
+#   target_link_libraries(my_app PRIVATE OpenCV::opencv_core ...)
+#   ep_target_add_compile_deps(my_app)
+# ---------------------------------------------------------------------------
+function(ep_target_add_compile_deps main_target)
+    get_target_property(_libs "${main_target}" LINK_LIBRARIES)
+    if(NOT _libs)
+        return()
+    endif()
+    foreach(_lib IN LISTS _libs)
+        if(NOT TARGET "${_lib}")
+            continue()
+        endif()
+        get_target_property(_iface_libs "${_lib}" INTERFACE_LINK_LIBRARIES)
+        if(NOT _iface_libs)
+            continue()
+        endif()
+        foreach(_dep IN LISTS _iface_libs)
+            if(TARGET "${_dep}" AND "${_dep}" MATCHES "^_ep_sync_")
+                add_dependencies("${main_target}" "${_dep}")
+            endif()
+        endforeach()
+    endforeach()
+endfunction()
+
+# ---------------------------------------------------------------------------
 # _ep_collect_deps(<out_var> [ep_target1 ep_target2 ...])
 #
 # Повертає список тих EP-цілей що реально оголошені (TARGET існує).
