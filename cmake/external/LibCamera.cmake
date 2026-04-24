@@ -109,6 +109,27 @@ else()
         endif()
         unset(_lc_nested_items)
         unset(_lc_nested)
+        # libcamera.pc / libcamera-base.pc мають Cflags: -I${includedir}/libcamera.
+        # Це ламає #include <libcamera/base/span.h> у споживачах (rpicam-apps тощо):
+        # pkg-config дає -I.../include/libcamera, тоді libcamera/base/span.h шукається
+        # у include/libcamera/libcamera/base/span.h — якого немає після flatten.
+        # Виправляємо на -I${includedir} щоб include/libcamera/base/span.h знаходилось.
+        set(_dollar "$")
+        foreach(_lc_pc_name libcamera libcamera-base)
+            set(_lc_pc "${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig/${_lc_pc_name}.pc")
+            if(EXISTS "${_lc_pc}")
+                file(READ "${_lc_pc}" _lc_pc_content)
+                string(REPLACE
+                    "Cflags: -I${_dollar}{includedir}/libcamera"
+                    "Cflags: -I${_dollar}{includedir}"
+                    _lc_pc_content "${_lc_pc_content}")
+                file(WRITE "${_lc_pc}" "${_lc_pc_content}")
+            endif()
+        endforeach()
+        unset(_lc_pc)
+        unset(_lc_pc_content)
+        unset(_lc_pc_name)
+        unset(_dollar)
         ep_imported_library(libcamera::libcamera "${_libcamera_lib}" "${_libcamera_inc}")
         _libcamera_make_base_target("")
         message(STATUS "[LibCamera] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
@@ -193,6 +214,23 @@ if(IS_DIRECTORY "${_src}")
 endif()
 ]])
 
+        set(_libcamera_patch_pc_script
+            "${CMAKE_BINARY_DIR}/_ep_cfg/libcamera-patch-pc.cmake")
+        file(WRITE "${_libcamera_patch_pc_script}" [=[
+set(_d "$")
+foreach(_pc libcamera libcamera-base)
+    set(_f "${PREFIX}/lib/pkgconfig/${_pc}.pc")
+    if(EXISTS "${_f}")
+        file(READ "${_f}" _c)
+        string(REPLACE
+            "Cflags: -I${_d}{includedir}/libcamera"
+            "Cflags: -I${_d}{includedir}"
+            _c "${_c}")
+        file(WRITE "${_f}" "${_c}")
+    endif()
+endforeach()
+]=])
+
         ExternalProject_Add(libcamera_ep
             GIT_REPOSITORY  "${LIBCAMERA_GIT_REPO}"
             GIT_TAG         "${LIBCAMERA_VERSION}"
@@ -224,6 +262,9 @@ endif()
                 "-DSRC=${EXTERNAL_INSTALL_PREFIX}/include/libcamera/libcamera"
                 "-DDST=${EXTERNAL_INSTALL_PREFIX}/include/libcamera"
                 -P "${_libcamera_flatten_script}"
+            COMMAND ${CMAKE_COMMAND}
+                "-DPREFIX=${EXTERNAL_INSTALL_PREFIX}"
+                -P "${_libcamera_patch_pc_script}"
             BUILD_BYPRODUCTS "${_libcamera_lib}" "${_libcamera_base_lib}"
             LOG_DOWNLOAD    ON
             LOG_CONFIGURE   ON
@@ -244,6 +285,7 @@ endif()
     unset(_libcamera_overlay_file)
     unset(_libcamera_pipelines)
     unset(_libcamera_flatten_script)
+    unset(_libcamera_patch_pc_script)
 endif()
 endif()
 
