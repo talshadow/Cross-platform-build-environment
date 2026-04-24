@@ -316,6 +316,26 @@ else()
             ${_ocv_dep_args}
         )
 
+        # Init-cache для pkg-config при крос-компіляції.
+        # cmake's FindPkgConfig встановлює PKG_CONFIG_LIBDIR лише для usr/lib/pkgconfig,
+        # але FFmpeg/libv4l2 лежать в usr/lib/<arch>/pkgconfig — тому вони не знаходяться.
+        # Через -C передаємо init-cache що виставляє PKG_CONFIG_LIBDIR до старту cmake.
+        set(_ocv_init_cache "${CMAKE_BINARY_DIR}/_ep_cfg/opencv-init-cache.cmake")
+        if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT AND CMAKE_LIBRARY_ARCHITECTURE)
+            set(_ocv_sysroot "${CMAKE_SYSROOT}")
+            set(_ocv_arch    "${CMAKE_LIBRARY_ARCHITECTURE}")
+            file(WRITE "${_ocv_init_cache}"
+                "set(ENV{PKG_CONFIG_SYSROOT_DIR} \"${_ocv_sysroot}\")\n"
+                "set(ENV{PKG_CONFIG_LIBDIR} "
+                "\"${_ocv_sysroot}/usr/lib/${_ocv_arch}/pkgconfig:"
+                "${_ocv_sysroot}/usr/lib/pkgconfig:"
+                "${_ocv_sysroot}/usr/share/pkgconfig\")\n")
+            unset(_ocv_sysroot)
+            unset(_ocv_arch)
+        else()
+            file(WRITE "${_ocv_init_cache}" "# native build — no extra pkg-config setup\n")
+        endif()
+
         # BYPRODUCTS — основні модулі для Ninja
         set(_ocv_byproducts "")
         foreach(_mod IN LISTS _ocv_modules)
@@ -348,7 +368,7 @@ else()
             PATCH_COMMAND
                 sed -i "s/cmake_minimum_required(VERSION 2\\.[0-9][0-9.]*/cmake_minimum_required(VERSION 3.28/"
                     "${EP_SOURCES_DIR}/opencv/cmake/OpenCVGenPkgconfig.cmake"
-            CMAKE_ARGS       ${_ocv_cmake_args}
+            CMAKE_ARGS       "-C${_ocv_init_cache}" ${_ocv_cmake_args}
             BUILD_BYPRODUCTS ${_ocv_byproducts}
             LOG_DOWNLOAD     ON
             LOG_BUILD        ON
