@@ -124,11 +124,14 @@ else()
             set(_libpisp_boost_inc "${EXTERNAL_INSTALL_PREFIX}/include")
         endif()
 
+        _ep_collect_deps(_libpisp_ep_deps libcamera_ep boost_ep)
+
         ExternalProject_Add(libpisp_ep
             GIT_REPOSITORY  "${LIBPISP_GIT_REPO}"
             GIT_TAG         "${LIBPISP_VERSION}"
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/libpisp"
+            DEPENDS         ${_libpisp_ep_deps}
             CONFIGURE_COMMAND
                 env
                     PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig

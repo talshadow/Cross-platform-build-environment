@@ -91,11 +91,14 @@ else()
         # Генеруємо meson cross-file для крос-компіляції
         _meson_generate_cross_file(_rpicam_cross_args)
 
+        _ep_collect_deps(_rpicam_ep_deps libcamera_ep boost_ep opencv_ep)
+
         ExternalProject_Add(rpicamapps_ep
             GIT_REPOSITORY  "${RPICAMAPPS_GIT_REPO}"
             GIT_TAG         "${RPICAMAPPS_VERSION}"
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/rpicamapps"
+            DEPENDS         ${_rpicam_ep_deps}
             CONFIGURE_COMMAND
                 env
                     PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig
