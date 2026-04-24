@@ -59,6 +59,14 @@ option(OPENCV_WITH_OPENCL
     "Збирати OpenCV з підтримкою OpenCL (потребує OpenCL ICD loader в sysroot/системі)"
     OFF)
 
+option(OPENCV_WITH_V4L2
+    "Збирати OpenCV з підтримкою V4L2 (потребує linux/videodev2.h; WITH_LIBV4L також потребує libv4l-dev)"
+    OFF)
+
+option(OPENCV_ENABLE_NONFREE
+    "Увімкнути non-free алгоритми OpenCV (SIFT, SURF тощо; обмеження патентів)"
+    OFF)
+
 option(OPENCV_USE_GIT
     "Завантажувати OpenCV через git clone (OFF = архів з GitHub Releases)"
     OFF)
@@ -273,6 +281,18 @@ else()
             )
         endif()
 
+        # TBB: передаємо шлях до нашого EP TBB щоб OpenCV не взяв системний
+        set(_ocv_tbb_args "")
+        if(TARGET TBB::tbb)
+            list(APPEND _ocv_tbb_args
+                -DWITH_TBB=ON
+                "-DTBB_DIR=${EXTERNAL_INSTALL_PREFIX}/lib/cmake/TBB"
+                -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF
+            )
+        else()
+            list(APPEND _ocv_tbb_args -DWITH_TBB=ON)
+        endif()
+
         ep_cmake_args(_ocv_cmake_args
             # Мінімізуємо залежності для embedded/cross-compilation
             # BUILD_SHARED_LIBS=ON вже передається через ep_cmake_args()
@@ -284,11 +304,14 @@ else()
             -DWITH_QT=OFF
             -DWITH_CUDA=OFF
             -DWITH_IPP=OFF
-            -DWITH_TBB=ON
             -DOPENCV_GENERATE_PKGCONFIG=ON
-            # Керовані опції (OFF за замовченням; вмикаються через OPENCV_WITH_*)
+            # Керовані опції (OFF за замовченням; вмикаються через OPENCV_WITH_* / OPENCV_ENABLE_*)
             -DWITH_FFMPEG=${OPENCV_WITH_FFMPEG}
             -DWITH_OPENCL=${OPENCV_WITH_OPENCL}
+            -DWITH_V4L=${OPENCV_WITH_V4L2}
+            -DWITH_LIBV4L=${OPENCV_WITH_V4L2}
+            -DOPENCV_ENABLE_NONFREE=${OPENCV_ENABLE_NONFREE}
+            ${_ocv_tbb_args}
             ${_ocv_contrib_arg}
             ${_ocv_dep_args}
         )
