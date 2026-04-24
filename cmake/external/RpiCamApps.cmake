@@ -91,6 +91,24 @@ else()
         # Генеруємо meson cross-file для крос-компіляції
         _meson_generate_cross_file(_rpicam_cross_args)
 
+        # Overlay: передаємо -I нашого prefix щоб #include <libcamera/...> знаходився
+        # незалежно від того що pkg-config прописує в Cflags.
+        set(_rpicam_overlay_file "${CMAKE_BINARY_DIR}/_ep_cfg/meson-rpicam-overlay.ini")
+        if(MESON_CROSS_CXX_ARGS)
+            file(WRITE "${_rpicam_overlay_file}"
+                "[built-in options]\n"
+                "cpp_args = [${MESON_CROSS_CXX_ARGS}, '-I${EXTERNAL_INSTALL_PREFIX}/include']\n"
+                "c_args = [${MESON_CROSS_C_ARGS}]\n"
+                "c_link_args = [${MESON_CROSS_LINK_ARGS}]\n"
+                "cpp_link_args = [${MESON_CROSS_LINK_ARGS}]\n")
+            list(APPEND _rpicam_cross_args "--cross-file" "${_rpicam_overlay_file}")
+        else()
+            file(WRITE "${_rpicam_overlay_file}"
+                "[built-in options]\n"
+                "cpp_args = ['-I${EXTERNAL_INSTALL_PREFIX}/include']\n")
+            list(APPEND _rpicam_cross_args "--native-file" "${_rpicam_overlay_file}")
+        endif()
+
         _ep_collect_deps(_rpicam_ep_deps libcamera_ep boost_ep opencv_ep)
 
         ExternalProject_Add(rpicamapps_ep
@@ -140,6 +158,7 @@ else()
         unset(_rpicam_meson)
         unset(_rpicam_ninja)
         unset(_rpicam_cross_args)
+        unset(_rpicam_overlay_file)
     endif()
 endif()
 
