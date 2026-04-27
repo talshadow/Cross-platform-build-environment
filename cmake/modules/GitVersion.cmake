@@ -12,8 +12,9 @@
 #   OUT_VAR    — змінна, куди записується версія у форматі NNN.NNN.NNN.NNN
 #   FALLBACK   — версія за замовчуванням, якщо git недоступний або тег не знайдено
 #                (за замовчуванням "0.0.0.0")
-#   TAG_PREFIX — початок імені тегу (напр. "kolay" → матчить "kolay_v1.2.3.4",
-#                "kolay-1.2.3.4" тощо); версія витягується regex з тегу.
+#   TAG_PREFIX — початок імені тегу; після префіксу обов'язковий роздільник _ або -
+#                (напр. "kolay" → матчить "kolay_v1.2.3.4", "kolay-1.2.3.4",
+#                але НЕ "kolayX1.2.3.4"); версія витягується regex з тегу.
 #                Без TAG_PREFIX шукаються теги [0-9]*.*.*.* та v[0-9]*.*.*.*
 #
 # git_get_commit_hash(<OUT_VAR> [LENGTH <n>])
@@ -36,9 +37,21 @@ function(git_get_version OUT_VAR)
         return()
     endif()
 
+    # Примусове re-configure при зміні тегів:
+    # теги зберігаються в packed-refs або в refs/tags/; відстежуємо обидва місця.
+    foreach(_gv_git_file
+            "${CMAKE_SOURCE_DIR}/.git/packed-refs"
+            "${CMAKE_SOURCE_DIR}/.git/refs/tags")
+        if(EXISTS "${_gv_git_file}")
+            set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY
+                CMAKE_CONFIGURE_DEPENDS "${_gv_git_file}")
+        endif()
+    endforeach()
+
     # Формуємо glob-патерн(и) для git tag --list
     if(DEFINED _GV_TAG_PREFIX)
-        set(_GV_PATTERNS "${_GV_TAG_PREFIX}*")
+        # [-_] — обов'язковий роздільник після префіксу (крапка кінця префіксу)
+        set(_GV_PATTERNS "${_GV_TAG_PREFIX}[-_]*")
     else()
         # Два патерни: з "v" і без — передаємо обидва одним викликом
         set(_GV_PATTERNS "[0-9]*.[0-9]*.[0-9]*.[0-9]*" "v[0-9]*.[0-9]*.[0-9]*.[0-9]*")
