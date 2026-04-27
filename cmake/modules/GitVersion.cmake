@@ -36,53 +36,33 @@ function(git_get_version OUT_VAR)
         return()
     endif()
 
-    set(_GV_RAW "")
-    set(_GV_RESULT 1)
-
+    # Формуємо glob-патерн(и) для git tag --list
     if(DEFINED _GV_TAG_PREFIX)
-        # Шукаємо теги що починаються з вказаного префіксу
-        execute_process(
-            COMMAND "${GIT_EXECUTABLE}" describe --tags
-                --match "${_GV_TAG_PREFIX}*"
-                --abbrev=0
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            OUTPUT_VARIABLE _GV_RAW
-            ERROR_QUIET
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            RESULT_VARIABLE _GV_RESULT
-        )
+        set(_GV_PATTERNS "${_GV_TAG_PREFIX}*")
     else()
-        # Шукаємо тег у форматі NNN.NNN.NNN.NNN (без префіксу)
-        execute_process(
-            COMMAND "${GIT_EXECUTABLE}" describe --tags
-                --match "[0-9]*.[0-9]*.[0-9]*.[0-9]*"
-                --abbrev=0
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            OUTPUT_VARIABLE _GV_RAW
-            ERROR_QUIET
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            RESULT_VARIABLE _GV_RESULT
-        )
-        # Якщо не знайдено — спробуємо з префіксом "v"
-        if(NOT _GV_RESULT EQUAL 0 OR _GV_RAW STREQUAL "")
-            execute_process(
-                COMMAND "${GIT_EXECUTABLE}" describe --tags
-                    --match "v[0-9]*.[0-9]*.[0-9]*.[0-9]*"
-                    --abbrev=0
-                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                OUTPUT_VARIABLE _GV_RAW
-                ERROR_QUIET
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                RESULT_VARIABLE _GV_RESULT
-            )
-        endif()
+        # Два патерни: з "v" і без — передаємо обидва одним викликом
+        set(_GV_PATTERNS "[0-9]*.[0-9]*.[0-9]*.[0-9]*" "v[0-9]*.[0-9]*.[0-9]*.[0-9]*")
     endif()
 
-    if(NOT _GV_RESULT EQUAL 0 OR _GV_RAW STREQUAL "")
+    # --sort=-version:refname: сортування за спаданням версії (1.10 > 1.9 — коректно)
+    # Перший рядок результату — найсвіжіший тег
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" tag --list ${_GV_PATTERNS} --sort=-version:refname
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE _GV_ALL_TAGS
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _GV_RESULT
+    )
+
+    if(NOT _GV_RESULT EQUAL 0 OR _GV_ALL_TAGS STREQUAL "")
         message(WARNING "GitVersion: тег не знайдено, використовується FALLBACK=${_GV_FALLBACK}")
         set(${OUT_VAR} "${_GV_FALLBACK}" PARENT_SCOPE)
         return()
     endif()
+
+    # Беремо перший рядок (найсвіжіший тег за версією)
+    string(REGEX MATCH "^[^\n\r]+" _GV_RAW "${_GV_ALL_TAGS}")
 
     # Витягуємо версію NNN.NNN.NNN.NNN з тегу (незалежно від префіксу/роздільника)
     string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" _GV_VERSION "${_GV_RAW}")
