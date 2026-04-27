@@ -43,7 +43,7 @@ cross_toolchain_find_compiler(
 set(_RPI1_CPU_FLAGS
     "-march=armv6zk -mtune=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard")
 
-set(CMAKE_C_FLAGS_INIT   "${_RPI1_CPU_FLAGS} -std=c11"   CACHE INTERNAL "")
+set(CMAKE_C_FLAGS_INIT   "${_RPI1_CPU_FLAGS} -std=gnu11"   CACHE INTERNAL "")
 set(CMAKE_CXX_FLAGS_INIT "${_RPI1_CPU_FLAGS} -std=c++20" CACHE INTERNAL "")
 
 # --- Sysroot (опціонально) ------------------------------------------------

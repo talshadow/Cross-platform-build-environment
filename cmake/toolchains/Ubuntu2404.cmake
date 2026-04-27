@@ -62,7 +62,7 @@ unset(_GCC_NM)
 #                     із переважною більшістю x86_64 CPU, випущених після 2009.
 #                     Замініть на x86-64 якщо потрібна максимальна сумісність.
 # -mtune=generic    — збалансована оптимізація
-set(CMAKE_C_FLAGS_INIT   "-march=x86-64-v2 -mtune=generic -std=c11"   CACHE INTERNAL "")
+set(CMAKE_C_FLAGS_INIT   "-march=x86-64-v2 -mtune=generic -std=gnu11"   CACHE INTERNAL "")
 set(CMAKE_CXX_FLAGS_INIT "-march=x86-64-v2 -mtune=generic -std=c++20" CACHE INTERNAL "")
 
 message(STATUS "[Ubuntu2404] Компілятор: ${CMAKE_C_COMPILER}, AR: ${CMAKE_AR}")

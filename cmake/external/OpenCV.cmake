@@ -31,12 +31,16 @@
 #   USE_SYSTEM_OPENCV      — ON: find_package в системі/sysroot
 #                            OFF (за замовченням): зібрати через ExternalProject
 #   OPENCV_ENABLE_CONTRIB  — ON (за замовченням): включати opencv_contrib модулі
-#   OPENCV_WITH_FFMPEG     — OFF (за замовченням): увімкнути підтримку FFmpeg
+#   OPENCV_WITH_FFMPEG     — ON (за замовченням): увімкнути підтримку FFmpeg
 #                            Потребує libavcodec/avformat/avutil/swscale-dev в sysroot.
 #                            При крос-збірці: pkg-config повинен бачити ffmpeg з sysroot.
-#   OPENCV_WITH_OPENCL     — OFF (за замовченням): увімкнути підтримку OpenCL
+#   OPENCV_WITH_OPENCL     — ON (за замовченням): увімкнути підтримку OpenCL
 #                            Потребує OpenCL ICD loader (libOpenCL.so) і заголовків
 #                            (opencl-headers) в sysroot або на хості.
+#   OPENCV_WITH_V4L2       — ON (за замовченням): увімкнути підтримку V4L2
+#                            Потребує linux/videodev2.h; WITH_LIBV4L також потребує libv4l-dev.
+#   OPENCV_ENABLE_NONFREE  — ON (за замовченням): non-free алгоритми (SIFT, SURF тощо)
+#                            Увага: патентні обмеження в деяких юрисдикціях.
 #
 # Кеш-змінні:
 #   OPENCV_VERSION          — версія (git тег або архів)
@@ -53,19 +57,19 @@ option(OPENCV_ENABLE_CONTRIB
 
 option(OPENCV_WITH_FFMPEG
     "Збирати OpenCV з підтримкою FFmpeg (потребує ffmpeg dev-libs в sysroot/системі)"
-    OFF)
+    ON)
 
 option(OPENCV_WITH_OPENCL
     "Збирати OpenCV з підтримкою OpenCL (потребує OpenCL ICD loader в sysroot/системі)"
-    OFF)
+    ON)
 
 option(OPENCV_WITH_V4L2
     "Збирати OpenCV з підтримкою V4L2 (потребує linux/videodev2.h; WITH_LIBV4L також потребує libv4l-dev)"
-    OFF)
+    ON)
 
 option(OPENCV_ENABLE_NONFREE
     "Увімкнути non-free алгоритми OpenCV (SIFT, SURF тощо; обмеження патентів)"
-    OFF)
+    ON)
 
 option(OPENCV_USE_GIT
     "Завантажувати OpenCV через git clone (OFF = архів з GitHub Releases)"
@@ -309,7 +313,6 @@ else()
             -DWITH_FFMPEG=${OPENCV_WITH_FFMPEG}
             -DWITH_OPENCL=${OPENCV_WITH_OPENCL}
             -DWITH_V4L=${OPENCV_WITH_V4L2}
-            -DWITH_LIBV4L=${OPENCV_WITH_V4L2}
             -DOPENCV_ENABLE_NONFREE=${OPENCV_ENABLE_NONFREE}
             ${_ocv_tbb_args}
             ${_ocv_contrib_arg}
@@ -318,7 +321,7 @@ else()
 
         # Init-cache для pkg-config при крос-компіляції.
         # cmake's FindPkgConfig встановлює PKG_CONFIG_LIBDIR лише для usr/lib/pkgconfig,
-        # але FFmpeg/libv4l2 лежать в usr/lib/<arch>/pkgconfig — тому вони не знаходяться.
+        # але FFmpeg лежить в usr/lib/<arch>/pkgconfig — тому не знаходиться.
         # Через -C передаємо init-cache що виставляє PKG_CONFIG_LIBDIR до старту cmake.
         set(_ocv_init_cache "${CMAKE_BINARY_DIR}/_ep_cfg/opencv-init-cache.cmake")
         if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT AND CMAKE_LIBRARY_ARCHITECTURE)

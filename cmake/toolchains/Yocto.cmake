@@ -59,9 +59,9 @@ if(DEFINED ENV{CC})
     list(REMOVE_AT _CC_ARGS 0)
 
     set(CMAKE_C_COMPILER "${_CC_EXE}" CACHE FILEPATH "C compiler" FORCE)
-    # Прапори з $CC + базовий стандарт C11 (strict, без -D_GNU_SOURCE)
+    # Прапори з $CC + gnu11 (GNU extensions для Linux kernel headers)
     string(JOIN " " _CC_FLAGS ${_CC_ARGS})
-    set(CMAKE_C_FLAGS_INIT "${_CC_FLAGS} -std=c11" CACHE INTERNAL "")
+    set(CMAKE_C_FLAGS_INIT "${_CC_FLAGS} -std=gnu11" CACHE INTERNAL "")
 else()
     message(FATAL_ERROR
         "[Yocto] Змінна середовища CC не визначена.\n"
