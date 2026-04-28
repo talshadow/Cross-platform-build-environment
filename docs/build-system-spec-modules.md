@@ -454,6 +454,34 @@ endforeach()
 
 ## InstallHelpers.cmake
 
+### target_add_ep_rpath
+
+```cmake
+target_add_ep_rpath(<target>)
+```
+
+Додає `$ORIGIN/../lib` до `INSTALL_RPATH` таргету — так само як EP-бібліотеки
+(еквівалент `-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib` у `ep_cmake_args()`).
+
+Використовує `APPEND`, тому безпечно якщо `INSTALL_RPATH` вже задано.
+Також виставляє `BUILD_WITH_INSTALL_RPATH=ON` та `INSTALL_RPATH_USE_LINK_PATH=OFF`.
+
+#### Параметри
+
+| Параметр | Тип | Обов'язковий | Опис |
+|---|---|---|---|
+| `target` | ім'я CMake цілі | так | ціль (executable або shared library) |
+
+#### Приклад
+
+```cmake
+add_executable(my_app main.cpp)
+target_link_libraries(my_app PRIVATE PNG::PNG OpenCV::opencv_core)
+target_add_ep_rpath(my_app)
+```
+
+---
+
 ### project_setup_install
 
 ```cmake

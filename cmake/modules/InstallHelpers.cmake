@@ -1,8 +1,10 @@
 # cmake/modules/InstallHelpers.cmake
 #
-# project_setup_install(<target>)
+# target_add_ep_rpath(<target>)
+#   Вбудовує $ORIGIN/../lib RPATH у <target> — так само як EP-бібліотеки.
 #
-# Налаштовує кастомну інсталяцію головного виконуваного файлу.
+# project_setup_install(<target>)
+#   Налаштовує кастомну інсталяцію головного виконуваного файлу.
 #
 # Створює цілі:
 #
@@ -26,6 +28,30 @@
 #   # → створює: install_opencv_example, install_opencv_example_stripped (RelWithDebInfo)
 
 include(GNUInstallDirs)
+
+# ---------------------------------------------------------------------------
+# target_add_ep_rpath(<target>)
+#
+# Додає $ORIGIN/../lib до INSTALL_RPATH таргету — так само як EP-бібліотеки
+# (через ep_cmake_args у Common.cmake).
+#
+# Використовує APPEND, тому безпечно якщо INSTALL_RPATH вже задано.
+#
+# Використання:
+#   target_link_libraries(my_app PRIVATE PNG::PNG OpenCV::opencv_core)
+#   target_add_ep_rpath(my_app)
+# ---------------------------------------------------------------------------
+function(target_add_ep_rpath target)
+    if(NOT TARGET "${target}")
+        message(FATAL_ERROR "[InstallHelpers] target_add_ep_rpath: target '${target}' не існує")
+    endif()
+    set_property(TARGET "${target}" APPEND PROPERTY
+        INSTALL_RPATH "$ORIGIN/../lib")
+    set_target_properties("${target}" PROPERTIES
+        BUILD_WITH_INSTALL_RPATH    ON
+        INSTALL_RPATH_USE_LINK_PATH OFF
+    )
+endfunction()
 
 function(project_setup_install target)
     if(NOT TARGET "${target}")

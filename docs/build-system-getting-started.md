@@ -27,7 +27,7 @@ sudo ./scripts/build-system-install-toolchains.sh all
 sudo ./scripts/build-system-install-toolchains.sh rpi-arm64 ninja cmake
 ```
 
-Доступні варіанти: `all`, `rpi-arm32`, `rpi-arm64`, `native20`, `native24`, `native-arch`, `ninja`, `cmake`.
+Доступні варіанти: `all`, `rpi-arm32`, `rpi-arm64`, `native20`, `native24`, `native-arch`, `ninja`, `cmake`, `gdb`.
 
 > **Arch/CachyOS — відмінності від Ubuntu:**
 > - `aarch64-linux-gnu-gcc` встановлюється без версії (не `gcc-12`/`gcc-13`).
@@ -234,11 +234,41 @@ ctest --preset native-debug --output-on-failure
 
 ---
 
+## 7. Remote debug на RPi (GDB)
+
+```bash
+# 1. Встановити gdb-multiarch на host (якщо ще не встановлено)
+sudo ./scripts/build-system-install-toolchains.sh gdb
+
+# 2. Встановити gdbserver на RPi
+ssh pi@192.168.1.100 "sudo apt install -y gdbserver"
+
+# 3. Зібрати debug-пресет (не release — LTO ламає debug-інфо)
+cmake --preset rpi4-debug -DRPI_SYSROOT=/srv/rpi4-sysroot
+cmake --build --preset rpi4-debug
+
+# 4. Задеплоїти
+./scripts/build-system-deploy.sh --preset rpi4-debug --host 192.168.1.100 --user pi
+
+# 5. На RPi запустити gdbserver
+ssh pi@192.168.1.100 "gdbserver :2345 /home/pi/my_app"
+
+# 6. На host підключитись
+gdb-multiarch build/rpi4-debug/my_app \
+    -ex "set sysroot /srv/rpi4-sysroot" \
+    -ex "target remote 192.168.1.100:2345"
+```
+
+Детальне налаштування launch.json для VS Code та Qt Creator — у
+`docs/build-system-ide-setup.md`, розділ *Debug на RPi (GDB remote)*.
+
+---
+
 ## Швидкий сценарій: RPi 4, з нуля до запуску
 
 ```bash
 # 1. Встановити інструменти (Ubuntu або Arch/CachyOS — скрипт визначає ОС автоматично)
-sudo ./scripts/build-system-install-toolchains.sh rpi-arm64 ninja cmake
+sudo ./scripts/build-system-install-toolchains.sh rpi-arm64 ninja cmake gdb
 
 # 2. Отримати sysroot (через Docker)
 ./scripts/build-system-get-sysroot-rpi.sh --method docker --arch arm64 --dest /srv/rpi4-sysroot

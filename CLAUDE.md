@@ -115,6 +115,7 @@ include(CrossCompileHelpers)
 include(GitVersion)
 include(BinaryDeps)
 include(CmakeEnum)
+include(InstallHelpers)
 
 target_enable_warnings(my_target STRICT)
 target_enable_sanitizers(my_target ASAN UBSAN)
@@ -126,6 +127,8 @@ git_get_version(PROJECT_VERSION)    # з git тегу NNN.NNN.NNN.NNN, FALLBACK=
 git_get_commit_hash(GIT_HASH)       # скорочений хеш HEAD (7 символів)
 
 ep_check_binary_deps("/path/to/binary" DEPS)  # рекурсивний аналіз залежностей
+
+target_add_ep_rpath(my_target)      # $ORIGIN/../lib RPATH — як у EP-бібліотеках
 
 declare_cmake_enum(MY_MODE "Release" "Режим" Debug Release MinSizeRel)
 validate_cmake_enum(MY_MODE)               # FATAL_ERROR якщо значення поза списком

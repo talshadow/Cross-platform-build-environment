@@ -257,6 +257,28 @@ CMake: Select Build Preset
 
 ### Debug на RPi (GDB remote)
 
+#### Вимоги
+
+**На host** — встановити `gdb-multiarch` (підтримує AArch64, ARM32 та інші arch):
+
+```bash
+sudo ./scripts/build-system-install-toolchains.sh gdb
+# або вручну:
+sudo apt install gdb-multiarch      # Ubuntu 20.04 / 24.04
+# pacman -S gdb                     # Arch/CachyOS (вже multiarch з коробки)
+```
+
+**На RPi** — встановити `gdbserver`:
+
+```bash
+sudo apt install gdbserver
+```
+
+> Для remote debug обов'язково збирайте пресет `rpi4-debug` (не `rpi4-release` і не
+> `rpi4-relwithdebinfo` — той має `-flto`, який розкидає debug-info по LTO-unit'ах).
+
+#### launch.json
+
 `.vscode/launch.json` для remote GDB:
 
 ```json
@@ -267,17 +289,23 @@ CMake: Select Build Preset
       "name": "RPi4: Remote GDB",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/rpi4-relwithdebinfo/my_app",
-      "miDebuggerPath": "/usr/bin/aarch64-linux-gnu-gdb",
+      "program": "${workspaceFolder}/build/rpi4-debug/my_app",
+      "miDebuggerPath": "/usr/bin/gdb-multiarch",
       "miDebuggerServerAddress": "192.168.1.100:2345",
+      "targetArchitecture": "arm64",
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
       "externalConsole": false,
       "MIMode": "gdb",
       "setupCommands": [
         {
-          "description": "Вказати sysroot для пошуку бібліотек",
+          "description": "Вказати sysroot для пошуку системних бібліотек",
           "text": "set sysroot /srv/rpi4-sysroot",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Додати шлях до EP-бібліотек (якщо використовуються)",
+          "text": "set solib-search-path /srv/rpi4-sysroot/lib/aarch64-linux-gnu",
           "ignoreFailures": true
         },
         {
@@ -292,11 +320,28 @@ CMake: Select Build Preset
 }
 ```
 
-На RPi запустіть GDB server перед дебагом:
+#### Запуск debug-сесії
 
 ```bash
-# На Raspberry Pi
-gdbserver :2345 /home/pi/my_app
+# 1. Зібрати debug-бінарник
+cmake --preset rpi4-debug -DRPI_SYSROOT=/srv/rpi4-sysroot
+cmake --build --preset rpi4-debug
+
+# 2. Задеплоїти на RPi
+./scripts/build-system-deploy.sh --preset rpi4-debug --host 192.168.1.100 --user pi
+
+# 3. На Raspberry Pi
+gdbserver :2345 /home/pi/my_app [args...]
+
+# 4. У VS Code: F5 або Run → Start Debugging → "RPi4: Remote GDB"
+```
+
+З командного рядка (без IDE):
+
+```bash
+gdb-multiarch build/rpi4-debug/my_app \
+    -ex "set sysroot /srv/rpi4-sysroot" \
+    -ex "target remote 192.168.1.100:2345"
 ```
 
 ### Remote - SSH (розробка безпосередньо на RPi)

@@ -15,6 +15,7 @@
 #   native20  — GCC 10 для Ubuntu 20.04
 #   native24  — GCC 13/14 для Ubuntu 24.04
 #   ninja     — збирач Ninja (потрібен для CMake presets)
+#   gdb       — cross-GDB для remote debug (gdb-multiarch / gdb)
 #
 # Yocto: toolchain встановлюється з SDK-інсталятора (./poky-*.sh),
 #        цей скрипт Yocto SDK не встановлює.
@@ -205,6 +206,38 @@ install_ninja() {
     ninja --version
 }
 
+install_gdb() {
+    log_info "=== Cross-GDB для remote debug ==="
+    case "${_PKG_MANAGER}" in
+        apt)
+            # gdb-multiarch: один бінарник з підтримкою всіх arch (AArch64, ARM32 тощо).
+            # На Ubuntu 20.04/24.04 це єдиний офіційний спосіб отримати AArch64 GDB.
+            install_packages gdb-multiarch
+            log_info "Бінарник: $(command -v gdb-multiarch)"
+            ;;
+        pacman)
+            # На Arch gdb збирається з --enable-targets=all — multiarch з коробки.
+            install_packages gdb
+            log_info "Бінарник: $(command -v gdb)"
+            ;;
+    esac
+
+    log_info "Перевірка підтримки AArch64:"
+    local gdb_bin
+    case "${_PKG_MANAGER}" in
+        apt)    gdb_bin="gdb-multiarch" ;;
+        pacman) gdb_bin="gdb" ;;
+    esac
+    "${gdb_bin}" --batch -ex "set architecture aarch64" -ex quit 2>&1 \
+        | grep -q "aarch64" \
+        && log_ok "AArch64 підтримується" \
+        || log_warn "Не вдалося підтвердити підтримку AArch64"
+
+    log_warn "Для remote debug задайте sysroot в IDE або .gdbinit:"
+    log_warn "  set sysroot /srv/rpi4-sysroot"
+    log_warn "  target remote <rpi-ip>:2345"
+}
+
 install_cmake() {
     log_info "=== CMake (перевірка версії) ==="
     if command -v cmake &>/dev/null; then
@@ -251,7 +284,7 @@ main() {
     log_info "Host система: ${distro}"
 
     # Визначаємо пакетний менеджер і набір цілей за замовчуванням
-    local default_targets=(rpi-arm32 rpi-arm64 ninja cmake)
+    local default_targets=(rpi-arm32 rpi-arm64 ninja cmake gdb)
     case "${distro}" in
         ubuntu:20.04)
             _PKG_MANAGER="apt"
@@ -298,10 +331,11 @@ main() {
             native-arch)  install_native_gcc_arch ;;
             ninja)        install_ninja       ;;
             cmake)        install_cmake       ;;
+            gdb)          install_gdb         ;;
             all)          : ;;  # вже оброблено вище
             *)
                 log_error "Невідомий варіант: '${target}'"
-                echo "Допустимі: all, rpi-arm32, rpi-arm64, native20, native24, native-arch, ninja, cmake"
+                echo "Допустимі: all, rpi-arm32, rpi-arm64, native20, native24, native-arch, ninja, cmake, gdb"
                 exit 1
                 ;;
         esac
@@ -318,6 +352,15 @@ main() {
               gcc-10 gcc-13 gcc-14 gcc; do
         if command -v "${cc}" &>/dev/null; then
             printf "  %-35s %s\n" "${cc}" "$(${cc} --version | head -1)"
+        fi
+    done
+
+    echo ""
+    echo "Cross-GDB:"
+    for gdb_bin in gdb-multiarch gdb; do
+        if command -v "${gdb_bin}" &>/dev/null; then
+            printf "  %-35s %s\n" "${gdb_bin}" "$(${gdb_bin} --version | head -1)"
+            break
         fi
     done
 }
