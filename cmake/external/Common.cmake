@@ -266,6 +266,10 @@ option(USE_ORIGIN_RPATH
     "Вбудовувати \$ORIGIN-відносний RPATH у встановлені бінарні файли"
     ON)
 
+option(EP_LTO
+    "Увімкнути Link-Time Optimization при збірці сторонніх бібліотек"
+    ON)
+
 # ---------------------------------------------------------------------------
 # ep_find_scope(<out_var>)
 #
@@ -359,9 +363,16 @@ function(ep_cmake_args out_var)
         list(APPEND _args -DCMAKE_SYSROOT=${CMAKE_SYSROOT})
     endif()
     if(CMAKE_FIND_ROOT_PATH)
-        string(REPLACE ";" "\\;" _frp "${CMAKE_FIND_ROOT_PATH}")
-        list(APPEND _args "-DCMAKE_FIND_ROOT_PATH=${_frp}")
-        unset(_frp)
+        # ExternalProject передає CMAKE_ARGS як cmake-список, де `;` — роздільник.
+        # Тому CMAKE_FIND_ROOT_PATH (список шляхів через `;`) не можна передати напряму:
+        # ExternalProject розіб'є значення і sysroot-частина потрапляє як позиційний аргумент.
+        # Рішення: записуємо значення у cmake init-cache файл і передаємо через -C.
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_ep_cfg")
+        set(_ep_frp_file "${CMAKE_BINARY_DIR}/_ep_cfg/ep_find_root_path.cmake")
+        file(WRITE "${_ep_frp_file}"
+            "set(CMAKE_FIND_ROOT_PATH \"${CMAKE_FIND_ROOT_PATH}\" CACHE STRING \"\" FORCE)\n")
+        list(APPEND _args -C "${_ep_frp_file}")
+        unset(_ep_frp_file)
     endif()
     if(RPI_SYSROOT)
         list(APPEND _args -DRPI_SYSROOT=${RPI_SYSROOT})
@@ -423,6 +434,13 @@ function(ep_cmake_args out_var)
             -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
             -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF
         )
+    endif()
+
+    # LTO для EP-бібліотек
+    if(EP_LTO)
+        list(APPEND _args
+            -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+            -DCMAKE_POLICY_DEFAULT_CMP0069=NEW)
     endif()
 
     # Додаткові аргументи від виклику
