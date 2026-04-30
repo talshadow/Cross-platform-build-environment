@@ -214,6 +214,12 @@ unset(_foo_hdr)
     │   └── opencv_contrib/
     ├── external/                  ← EXTERNAL_INSTALL_PREFIX root
     │   ├── RaspberryPi4/Release/
+    │   │   ├── lib/               ← .so бібліотеки
+    │   │   ├── include/           ← заголовки
+    │   │   ├── share/             ← дані (libcamera pipeline конфіги тощо)
+    │   │   ├── etc/               ← системні конфіги (libcamera IPA)
+    │   │   └── dependencies/      ← build-metadata (не runtime)
+    │   │       └── libcamera/key/ipa/ipa-priv-key.pem
     │   └── native/Debug/
     ├── rpi4-release/              ← preset build dirs
     └── native-debug/
@@ -499,6 +505,30 @@ cmake --build build/rpi4-release
 
 **Виклик:** після `ExternalProject_Add` і `ep_imported_library_from_ep` у кожному `Lib*.cmake`.
 `cmake_file` МУСИТЬ бути `"${CMAKE_CURRENT_LIST_FILE}"` — переданим явно з місця виклику.
+
+---
+
+### ep_register_runtime_dirs(target ...)
+
+Реєструє runtime-директорії (плагіни, конфіги, data) на IMPORTED target.
+Детальний опис — у специфікації модулів (`build-system-spec-modules.md`,
+розділ `RuntimeDeps.cmake`).
+
+Доступна у всіх `Lib*.cmake` автоматично (Common.cmake підключає RuntimeDeps.cmake).
+
+```cmake
+# Шаблон для бібліотек з dlopen()-плагінами:
+ep_register_runtime_dirs(Foo::foo
+    BASE_DIR "${EXTERNAL_INSTALL_PREFIX}"
+    DIRS
+        lib/foo          # .so плагіни — destination: INSTALL_PREFIX/lib/foo/
+        share/foo        # конфіги    — destination: INSTALL_PREFIX/share/foo/
+    [NO_STRIP]           # якщо .so мають підписи (ipa_*.so.sign тощо)
+    [SIGN_KEY <path>]    # приватний ключ для strip + resign
+)
+```
+
+Викликати після `ep_imported_library_from_ep()` у `Lib*.cmake`.
 
 ---
 

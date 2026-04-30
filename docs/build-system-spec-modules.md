@@ -565,27 +565,45 @@ project_setup_install(<target>)
 
 #### Структура директорій інсталяції
 
+Для бінарника з runtime ресурсами (наприклад, libcamera):
+
 ```
 ${CMAKE_BINARY_DIR}/
-├── install_<BuildType>/
-│   ├── bin/    — виконуваний файл
-│   └── lib/    — EP залежності (з symlink-chain)
-│
-└── install_RelWithDebInfo_stripped/    ← тільки для RelWithDebInfo
-    ├── bin/    — виконуваний файл (--strip-all)
-    └── lib/    — залежності (--strip-debug, симлінки пропускаються)
+└── install_<BuildType>/
+    ├── bin/
+    │   └── camera_app
+    ├── lib/
+    │   ├── libcamera.so            ← EP залежності (BinaryDeps)
+    │   ├── libcamera-base.so
+    │   └── libcamera/              ← runtime ресурси (RuntimeDeps)
+    │       ├── ipa_rpi_vc4.so
+    │       ├── ipa_rpi_vc4.so.sign
+    │       └── ipa_rpi_vc4_proxy
+    ├── share/
+    │   └── libcamera/
+    │       └── pipeline/rpi/vc4/
+    └── etc/
+        └── libcamera/ipa/
 ```
 
 #### Реалізація
 
 Обидві цілі запускають `cmake/install_project.cmake` через `add_custom_target` з
-`cmake -P`. Аналіз залежностей виконується через `ep_check_binary_deps` (BinaryDeps.cmake)
-у момент запуску цілі — після збірки, а не під час конфігурації.
+`cmake -P`. Аналіз залежностей виконується через `ep_check_binary_deps` (BinaryDeps.cmake).
+Runtime ресурси збираються через `ep_collect_runtime_resources` (RuntimeDeps.cmake) — обидва
+кроки виконуються у момент запуску цілі, а не під час конфігурації.
+
+**Порядок виконання:**
+1. `ep_check_binary_deps` → копіює `lib/*.so` (link-time залежності)
+2. Strip `lib/*.so` (якщо `DO_STRIP=ON`) — IPA модулів іще нема, вони не стріпуються
+3. RuntimeDeps → копіює `lib/libcamera/`, `share/libcamera/`, `etc/libcamera/`
+4. Strip + resign IPA `.so` (якщо `DO_STRIP=ON` + `SIGN_KEY` є)
 
 При стрипуванні:
 - `--strip-all` для виконуваного файлу (видаляє всі символи та налагоджувальну інформацію)
-- `--strip-debug` для кожної `.so` (зберігає таблицю символів для `dlopen`)
-- Симлінки пропускаються
+- `--strip-debug` для кожної link-time `.so` (зберігає таблицю символів для `dlopen`)
+- IPA `.so` — `--strip-debug` + автоматичний ре-підпис через `openssl` (якщо `SIGN_KEY` задано)
+- Симлінки та `.sign` файли пропускаються
 
 #### Зовнішні залежності
 
@@ -604,25 +622,176 @@ ${CMAKE_BINARY_DIR}/
 | `target` не існує | `FATAL_ERROR` |
 | `cmake/install_project.cmake` не знайдено | `FATAL_ERROR` |
 | `DO_STRIP=ON` + `CMAKE_STRIP` не передано | `WARNING`, стрипування пропускається |
+| `DO_STRIP=ON` + `openssl` не в PATH | `WARNING`, IPA ре-підпис пропускається |
+| Runtime ресурс не знайдено (EP не зібрано) | `WARNING`, продовжує |
 
-#### Приклади
+#### Приклад — стандартний (без libcamera)
 
 ```cmake
 add_executable(opencv_example main.cpp)
-target_link_libraries(opencv_example PRIVATE OpenCV::opencv_core ...)
+target_link_libraries(opencv_example PRIVATE OpenCV::opencv_core)
 ep_target_add_compile_deps(opencv_example)
 project_setup_install(opencv_example)
-# → install_opencv_example, install_opencv_example_stripped (RelWithDebInfo)
 ```
 
 ```bash
-# Зібрати і встановити
-cmake --build build/rpi4-relwithdebinfo --target opencv_example
 cmake --build build/rpi4-relwithdebinfo --target install_opencv_example
-
-# Стрипована версія для деплою
 cmake --build build/rpi4-relwithdebinfo --target install_opencv_example_stripped
 ```
+
+#### Приклад — з libcamera (runtime ресурси + IPA модулі)
+
+```cmake
+add_executable(camera_app main.cpp)
+target_link_libraries(camera_app PRIVATE libcamera::libcamera)
+target_add_ep_rpath(camera_app)
+ep_target_add_compile_deps(camera_app)
+project_setup_install(camera_app)
+# → install_camera_app, install_camera_app_stripped
+#
+# install_camera_app_stripped автоматично:
+#   1. strip --strip-debug libcamera.so, libcamera-base.so
+#   2. Копіює lib/libcamera/ (IPA modules + proxy + .sign)
+#   3. strip --strip-debug ipa_rpi_vc4.so + openssl resign → оновлює .sign
+```
+
+```bash
+# Деплой на RPi (стрипований, з IPA модулями)
+cmake --build build/rpi4-relwithdebinfo --target install_camera_app_stripped
+rsync -av build/rpi4-relwithdebinfo/install_RelWithDebInfo_stripped/ pi@192.168.1.100:~/app/
+```
+
+---
+
+## RuntimeDeps.cmake
+
+Модуль управління runtime-ресурсами бібліотек з динамічними плагінами.
+
+Підключається автоматично через `cmake/external/Common.cmake` (не потребує явного
+`include`) і через `InstallHelpers.cmake` для `project_setup_install`.
+
+**Проблема яку вирішує:** деякі бібліотеки завантажують плагіни та конфіги через
+`dlopen()` — вони не є link-time залежностями (не видимі `ep_check_binary_deps`/`readelf`)
+і тому не копіюються автоматично при інсталяції. Приклад: libcamera завантажує
+IPA модулі (`ipa_rpi_vc4.so`) з `lib/libcamera/` у runtime.
+
+**Додаткова складність:** IPA `.so` мають SHA256-підпис (`ipa_rpi_vc4.so.sign`).
+При стрипуванні підпис інвалідується — модуль повинен бути ре-підписаний тим самим
+приватним ключем що використовувався при збірці.
+
+---
+
+### ep_register_runtime_dirs
+
+```cmake
+ep_register_runtime_dirs(<target>
+    BASE_DIR <abs_path>
+    DIRS <rel_dir1> [<rel_dir2>...]
+    [NO_STRIP]
+    [SIGN_KEY <key_path>]
+)
+```
+
+Реєструє runtime-директорії як властивості IMPORTED target.
+Викликати у `Lib*.cmake` після `ep_imported_library_from_ep()`.
+
+#### Параметри
+
+| Параметр | Тип | Обов'язковий | Опис |
+|---|---|---|---|
+| `target` | ім'я CMake цілі | так | IMPORTED target (напр. `libcamera::libcamera`) |
+| `BASE_DIR` | абсолютний шлях | так | базова директорія (зазвичай `EXTERNAL_INSTALL_PREFIX`) |
+| `DIRS` | список відносних шляхів | так | директорії відносно `BASE_DIR`; перший компонент → destination parent |
+| `NO_STRIP` | keyword | ні | `.so` у цих директоріях не стріпувати без ре-підпису |
+| `SIGN_KEY` | шлях | ні | приватний ключ для strip + resign; якщо відсутній і `NO_STRIP` — `.so` не стріпуються зовсім |
+
+#### Destination mapping
+
+| DIRS запис | Джерело | Призначення |
+|---|---|---|
+| `lib/libcamera` | `BASE_DIR/lib/libcamera/` | `INSTALL_PREFIX/lib/libcamera/` |
+| `share/libcamera` | `BASE_DIR/share/libcamera/` | `INSTALL_PREFIX/share/libcamera/` |
+| `etc/libcamera` | `BASE_DIR/etc/libcamera/` | `INSTALL_PREFIX/etc/libcamera/` |
+
+#### Target properties що виставляються
+
+| Property | Тип | Вміст |
+|---|---|---|
+| `EP_RUNTIME_DIRS_SRC` | list | абсолютні шляхи до директорій ресурсів |
+| `EP_RUNTIME_DIRS_DST` | list | відносні destination parent (перший компонент DIRS) |
+| `EP_RUNTIME_NO_STRIP` | BOOL | `TRUE` / `FALSE` |
+| `EP_RUNTIME_SIGN_KEY` | string | шлях до ключа або порожній рядок |
+
+#### Поведінка при install
+
+| Умова | Результат |
+|---|---|
+| Директорія існує | Рекурсивне копіювання у destination |
+| Директорія не існує (EP не зібрано) | `WARNING`, пропуск |
+| `NO_STRIP=FALSE`, `DO_STRIP=ON` | `.so` стріпуються в загальному циклі |
+| `NO_STRIP=TRUE`, `SIGN_KEY` відсутній, `DO_STRIP=ON` | `.so` **не** стріпуються |
+| `NO_STRIP=TRUE`, `SIGN_KEY` є, `DO_STRIP=ON` | `.so` стріпуються + ре-підписуються |
+
+#### Приклад (у Lib*.cmake)
+
+```cmake
+# У LibCamera.cmake, після ep_imported_library_from_ep():
+ep_register_runtime_dirs(libcamera::libcamera
+    BASE_DIR "${EXTERNAL_INSTALL_PREFIX}"
+    DIRS
+        lib/libcamera      # IPA .so + .sign + proxy executables
+        share/libcamera    # pipeline configs (rpi/vc4/, rpi/pisp/)
+        etc/libcamera      # system IPA configs
+    NO_STRIP
+    SIGN_KEY
+        "${EXTERNAL_INSTALL_PREFIX}/dependencies/libcamera/key/ipa/ipa-priv-key.pem"
+)
+```
+
+---
+
+### ep_collect_runtime_resources
+
+```cmake
+ep_collect_runtime_resources(<main_target> <out_file_var>)
+```
+
+Рекурсивно обходить `LINK_LIBRARIES` `<main_target>` і транзитивно
+`INTERFACE_LINK_LIBRARIES` усіх залежностей, збирає всі targets з
+`EP_RUNTIME_DIRS_SRC` property і серіалізує результат у cmake-файл.
+
+Викликається **автоматично** з `project_setup_install()` — ручний виклик не потрібен.
+
+#### Алгоритм обходу
+
+1. Стартує з `LINK_LIBRARIES` головного таргету (прямі залежності)
+2. Для кожного dependency рекурсивно обходить `INTERFACE_LINK_LIBRARIES`
+3. Пропускає `$<...>` generator expressions, нетаргети, `_ep_sync_*` обгортки
+4. Захист від циклів — глобальний visited-список
+
+#### Формат згенерованого файлу
+
+```cmake
+# _ep_cfg/runtime_resources_<target>.cmake
+set(EP_RT_COUNT 3)
+# [0] libcamera::libcamera
+set(EP_RT_SRC_0      "/path/external/lib/libcamera")
+set(EP_RT_DST_0      "lib")
+set(EP_RT_NO_STRIP_0 TRUE)
+set(EP_RT_SIGN_KEY_0 "/path/external/dependencies/libcamera/key/ipa/ipa-priv-key.pem")
+# [1] libcamera::libcamera
+set(EP_RT_SRC_1      "/path/external/share/libcamera")
+set(EP_RT_DST_1      "share")
+set(EP_RT_NO_STRIP_1 TRUE)
+set(EP_RT_SIGN_KEY_1 "/path/external/dependencies/libcamera/key/ipa/ipa-priv-key.pem")
+# ...
+```
+
+#### Транзитивне виявлення
+
+Якщо `my_app → rpicam_apps::camera_app → libcamera::libcamera`, ресурси
+libcamera виявляються і копіюються автоматично — навіть якщо `my_app` не
+лінкується з libcamera напряму.
 
 ---
 
@@ -637,3 +806,5 @@ cmake --build build/rpi4-relwithdebinfo --target install_opencv_example_stripped
 | `GitVersion` при відсутньому git | `WARNING`, повертає fallback/unknown |
 | `BinaryDeps` при відсутньому `readelf` | `FATAL_ERROR` |
 | `InstallHelpers` + `BinaryDeps` | сумісні (InstallHelpers викликає BinaryDeps внутрішньо) |
+| `InstallHelpers` + `RuntimeDeps` | сумісні (InstallHelpers включає RuntimeDeps автоматично) |
+| `RuntimeDeps` без `InstallHelpers` | `ep_register_runtime_dirs` доступна через `Common.cmake` |

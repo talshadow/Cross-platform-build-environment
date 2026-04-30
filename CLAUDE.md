@@ -116,7 +116,7 @@ include(CrossCompileHelpers)
 include(GitVersion)
 include(BinaryDeps)
 include(CmakeEnum)
-include(InstallHelpers)
+include(InstallHelpers)   # автоматично підключає RuntimeDeps
 
 target_enable_warnings(my_target STRICT)
 target_enable_sanitizers(my_target ASAN UBSAN)
@@ -135,6 +135,32 @@ target_add_ep_rpath(my_target)      # $ORIGIN/../lib RPATH — як у EP-біб
 declare_cmake_enum(MY_MODE "Release" "Режим" Debug Release MinSizeRel)
 validate_cmake_enum(MY_MODE)               # FATAL_ERROR якщо значення поза списком
 ```
+
+### Приклад: бінарник з libcamera (IPA модулі, strip + resign)
+
+```cmake
+# CMakeLists.txt
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/external/ExternalDeps.cmake")
+
+add_executable(camera_app main.cpp)
+target_link_libraries(camera_app PRIVATE libcamera::libcamera)
+target_add_ep_rpath(camera_app)
+ep_target_add_compile_deps(camera_app)
+project_setup_install(camera_app)
+# Автоматично:
+#   install_camera_app         — копіює bin/ lib/ lib/libcamera/ share/ etc/
+#   install_camera_app_stripped — те саме + strip libs + strip+resign IPA .so
+```
+
+```bash
+# Деплой стрипованої версії на RPi:
+cmake --build build/rpi4-relwithdebinfo --target install_camera_app_stripped
+rsync -av build/rpi4-relwithdebinfo/install_RelWithDebInfo_stripped/ pi@rpi4:~/app/
+```
+
+`ep_register_runtime_dirs` у `LibCamera.cmake` реєструє `lib/libcamera/`,
+`share/libcamera/`, `etc/libcamera/` як runtime ресурси. `project_setup_install`
+підхоплює їх транзитивно — навіть якщо `my_app → rpicam_apps → libcamera`.
 
 ## Алгоритм Lib*.cmake (USE_SYSTEM=OFF)
 
