@@ -245,6 +245,55 @@ endif()
 
 ---
 
+### cross_detect_platform
+
+```cmake
+cross_detect_platform()
+```
+
+Визначає кінцеву платформу і виставляє кешові змінні.
+
+Параметрів немає. Безпечно викликати кілька разів (результат кешується).
+
+#### Змінні що виставляються
+
+| Змінна | Тип | Опис |
+|---|---|---|
+| `PLATFORM_NAME` | `STRING` | Конкретна назва: `"RPi4"`, `"RPi5"`, `"RPi3"`, `"Yocto"`, `"Ubuntu"`, `"Debian"`, `"Linux-aarch64"`, … |
+| `PLATFORM_CROSS_COMPILE` | `BOOL` | Крос-компіляція (хост ≠ ціль) |
+| `PLATFORM_RPI` | `BOOL` | Ціль — Raspberry Pi (будь-яка модель) |
+| `PLATFORM_RPI4` | `BOOL` | Ціль — RPi 4/400/CM4 (BCM2711, VC4 ISP) |
+| `PLATFORM_RPI5` | `BOOL` | Ціль — RPi 5/CM5 (BCM2712, PiSP ISP) |
+| `PLATFORM_YOCTO` | `BOOL` | Ціль — Yocto Linux |
+| `PLATFORM_ARM` | `BOOL` | Ціль — ARM (aarch64 або arm32) |
+| `PLATFORM_X86_64` | `BOOL` | Ціль — x86_64 |
+
+`PLATFORM_ARM` / `PLATFORM_X86_64` визначаються виключно з `CMAKE_SYSTEM_PROCESSOR`
+і не залежать від того, крос це чи нативна збірка.
+
+#### Логіка визначення PLATFORM_NAME
+
+| Режим | Джерело | Приклади |
+|---|---|---|
+| Крос | Ім'я toolchain-файлу (без `.cmake`) | `RaspberryPi4.cmake` → `"RPi4"`, `Yocto.cmake` → `"Yocto"` |
+| Нативна ARM | `/proc/device-tree/model` | `"Raspberry Pi 4 …"` → `"RPi4"` |
+| Нативна x86_64 | `/etc/os-release` → `NAME=` | `"Ubuntu"`, `"Debian"`, `"Linux-x86_64"` |
+
+#### Приклад
+
+```cmake
+cross_detect_platform()
+message(STATUS "Target: ${PLATFORM_NAME}")
+
+if(PLATFORM_RPI4)
+    target_compile_options(my_app PRIVATE -mcpu=cortex-a72)
+elseif(PLATFORM_RPI5)
+    target_compile_options(my_app PRIVATE -mcpu=cortex-a76)
+endif()
+```
+
+---
+
 ### cross_get_target_info
 
 ```cmake
@@ -264,8 +313,18 @@ cross_get_target_info()
   CMAKE_CXX_COMPILER       : /usr/bin/aarch64-linux-gnu-g++
   CMAKE_SYSROOT            : /srv/rpi4-sysroot
   CMAKE_FIND_ROOT_PATH     : /srv/rpi4-sysroot
+  PLATFORM_NAME            : RPi4
+  PLATFORM_CROSS_COMPILE   : TRUE
+  PLATFORM_RPI             : TRUE
+  PLATFORM_RPI4            : TRUE
+  PLATFORM_RPI5            : FALSE
+  PLATFORM_YOCTO           : FALSE
+  PLATFORM_ARM             : TRUE
+  PLATFORM_X86_64          : FALSE
 ===================================
 ```
+
+> Для відображення `PLATFORM_*` змінних потрібно попередньо викликати `cross_detect_platform()`.
 
 ---
 

@@ -502,6 +502,37 @@ cmake --build build/rpi4-release
 
 ---
 
+### _EP_PLATFORM_*
+
+Модульні змінні що автоматично виставляються `Common.cmake` при підключенні.
+Доступні у всіх `Lib*.cmake` файлах без додаткових викликів.
+
+| Змінна | Тип | Опис |
+|---|---|---|
+| `_EP_PLATFORM_RPI` | BOOL | Ціль — будь-який Raspberry Pi |
+| `_EP_PLATFORM_RPI4` | BOOL | Ціль — RPi 4/400/CM4 (BCM2711, VC4 ISP) |
+| `_EP_PLATFORM_RPI5` | BOOL | Ціль — RPi 5/CM5 (BCM2712, PiSP ISP) |
+| `_EP_PLATFORM_YOCTO` | BOOL | Ціль — Yocto Linux |
+| `_EP_PLATFORM_X86_64` | BOOL | Ціль — x86_64 |
+| `_EP_PLATFORM_ARM` | BOOL | Ціль — ARM (aarch64 або arm32) |
+
+**Джерело:** якщо `cross_detect_platform()` вже викликано — перевикористовує
+`PLATFORM_*` кеш-змінні. Інакше виконує інлайн-детекцію за тією ж логікою
+(ім'я toolchain-файлу при крос; `/proc/device-tree/model` при нативній ARM;
+`CMAKE_SYSTEM_PROCESSOR` при нативній x86_64).
+
+**Використання в Lib*.cmake:**
+
+```cmake
+if(_EP_PLATFORM_RPI5)
+    set(_libfoo_extra_options "-Dpisp=enabled")
+endif()
+```
+
+Не є кешованими — лише module-scope змінні, не видимі користувачу через `cmake -L`.
+
+---
+
 ### _ep_create_sysroot_lib_scripts()
 
 Викликається **автоматично** під час конфігурації — ручний виклик не потрібен.
@@ -743,6 +774,14 @@ cmake --preset rpi4-release -DOPENCV_WITH_FFMPEG=ON -DRPI_SYSROOT=/srv/rpi4-sysr
 Причина: pipeline генерує `control_ids_rpi.yaml`, без якого `controls::rpi` namespace
 не існує і rpicam-apps не компілюється. На x86_64 pipeline збирається (pure C++),
 але не запускається без RPi hardware.
+
+**Pipeline `rpi/pisp` додається автоматично для RPi5** (`_EP_PLATFORM_RPI5`).
+`rpi/pisp` підтримує BCM2712 PiSP ISP і потрібен для повноцінної роботи камери на RPi 5/CM5.
+
+| Платформа | Pipelines | IPAs |
+|---|---|---|
+| RPi4, x86_64, Yocto, інша ARM | `rpi/vc4` | `rpi/vc4` |
+| RPi5 (крос або нативна) | `rpi/vc4,rpi/pisp` | `rpi/vc4,rpi/pisp` |
 
 Потребує host-tools: `python3-yaml` та `python3-ply` (генератор IPA protocol).
 
