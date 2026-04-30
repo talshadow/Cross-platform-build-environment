@@ -140,6 +140,8 @@ else()
     set(EP_RT_COUNT 0)
 endif()
 
+set(_rt_plugin_deps_total 0)
+
 if(EP_RT_COUNT GREATER 0)
     message(STATUS "[install_project] Runtime ресурси (${EP_RT_COUNT} директорій):")
     math(EXPR _rt_last "${EP_RT_COUNT} - 1")
@@ -151,6 +153,24 @@ if(EP_RT_COUNT GREATER 0)
             file(COPY "${_rt_src}" DESTINATION "${_rt_dst}")
             message(STATUS "[install_project]   ${EP_RT_DST_${_i}}/${_rt_dir_name}/")
             math(EXPR _rt_dirs_copied "${_rt_dirs_copied} + 1")
+
+            # Аналіз залежностей плагінів у скопійованій директорії.
+            # dlopen'd .so (наприклад IPA-модулі) не видно readelf на main binary,
+            # тому ep_check_binary_deps їх не захоплює — аналізуємо окремо.
+            set(_rt_installed_dir "${_rt_dst}/${_rt_dir_name}")
+            file(GLOB_RECURSE _rt_plugin_so_files "${_rt_installed_dir}/*.so")
+            foreach(_rt_so IN LISTS _rt_plugin_so_files)
+                if(NOT IS_SYMLINK "${_rt_so}")
+                    ep_check_binary_deps("${_rt_so}" _rt_so_deps)
+                    foreach(_dep IN LISTS _rt_so_deps)
+                        file(INSTALL "${_dep}"
+                            DESTINATION "${_lib_dir}"
+                            TYPE SHARED_LIBRARY
+                            FOLLOW_SYMLINK_CHAIN)
+                        math(EXPR _rt_plugin_deps_total "${_rt_plugin_deps_total} + 1")
+                    endforeach()
+                endif()
+            endforeach()
         else()
             message(WARNING "[install_project] Runtime ресурс не знайдено (EP ще не зібрано?): ${_rt_src}")
         endif()
@@ -223,6 +243,9 @@ message(STATUS "[install_project]   Виконуваний:   ${INSTALL_BINDIR}/
 message(STATUS "[install_project]   Бібліотеки:    ${_n_libs} у ${INSTALL_LIBDIR}/")
 if(_rt_dirs_copied GREATER 0)
     message(STATUS "[install_project]   Runtime dirs:  ${_rt_dirs_copied} скопійовано")
+endif()
+if(_rt_plugin_deps_total GREATER 0)
+    message(STATUS "[install_project]   Plugin deps:   ${_rt_plugin_deps_total} бібліотек")
 endif()
 if(DO_STRIP)
     message(STATUS "[install_project]   Стрипований:   YES (--strip-all bin, --strip-debug libs)")
