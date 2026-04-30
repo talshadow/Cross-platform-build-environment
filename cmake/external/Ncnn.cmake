@@ -26,7 +26,14 @@ set(NCNN_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_ncnn_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libncnn.so")
+# ncnn встановлює DEBUG_POSTFIX "_debug" — у Debug збірці файл libncnn_debug.so
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(_ncnn_suffix "_debug")
+else()
+    set(_ncnn_suffix "")
+endif()
+
+set(_ncnn_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libncnn${_ncnn_suffix}.so")
 set(_ncnn_inc "${EXTERNAL_INSTALL_PREFIX}/include")
 
 if(USE_SYSTEM_NCNN)
@@ -99,5 +106,6 @@ else()
     endif()
 endif()
 
+unset(_ncnn_suffix)
 unset(_ncnn_lib)
 unset(_ncnn_inc)

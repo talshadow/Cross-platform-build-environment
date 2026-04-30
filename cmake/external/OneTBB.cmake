@@ -33,8 +33,15 @@ set(ONETBB_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_tbb_lib        "${EXTERNAL_INSTALL_PREFIX}/lib/libtbb.so")
-set(_tbbmalloc_lib  "${EXTERNAL_INSTALL_PREFIX}/lib/libtbbmalloc.so")
+# oneTBB додає суфікс _debug до імен .so при Debug збірці
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(_tbb_suffix "_debug")
+else()
+    set(_tbb_suffix "")
+endif()
+
+set(_tbb_lib        "${EXTERNAL_INSTALL_PREFIX}/lib/libtbb${_tbb_suffix}.so")
+set(_tbbmalloc_lib  "${EXTERNAL_INSTALL_PREFIX}/lib/libtbbmalloc${_tbb_suffix}.so")
 set(_tbb_inc        "${EXTERNAL_INSTALL_PREFIX}/include")
 
 if(USE_SYSTEM_ONETBB)
@@ -112,6 +119,7 @@ else()
     endif()
 endif()
 
+unset(_tbb_suffix)
 unset(_tbb_lib)
 unset(_tbbmalloc_lib)
 unset(_tbb_inc)
