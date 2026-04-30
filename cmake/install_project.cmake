@@ -52,6 +52,31 @@ include(BinaryDeps)
 message(STATUS "[install_project] Аналіз залежностей: ${BINARY_FILE}")
 ep_check_binary_deps("${BINARY_FILE}" _deploy_libs)
 
+# MISSING → завжди помилка (бінарник не запуститься на цільовій платформі)
+get_property(_missing_libs GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_MISSING)
+if(_missing_libs)
+    list(REMOVE_DUPLICATES _missing_libs)
+    string(JOIN "\n    " _missing_str ${_missing_libs})
+    message(FATAL_ERROR
+        "[install_project] Не знайдено залежності (MISSING):\n"
+        "    ${_missing_str}\n"
+        "Перевірте що всі бібліотеки зібрані в EXTERNAL_INSTALL_PREFIX.")
+endif()
+
+# SYSTEM при крос-компіляції → помилка (хостова бібліотека замість цільової)
+if(CMAKE_SYSROOT)
+    get_property(_sys_libs GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_SYS)
+    if(_sys_libs)
+        list(REMOVE_DUPLICATES _sys_libs)
+        string(JOIN "\n    " _sys_str ${_sys_libs})
+        message(FATAL_ERROR
+            "[install_project] Виявлено хостові бібліотеки при крос-компіляції (SYSTEM):\n"
+            "    ${_sys_str}\n"
+            "Бінарник слинкований проти хостових .so замість цільових. "
+            "Перевірте CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=OFF та EP DEPENDS.")
+    endif()
+endif()
+
 list(LENGTH _deploy_libs _n_libs)
 
 # ---------------------------------------------------------------------------
@@ -167,6 +192,29 @@ if(EP_RT_COUNT GREATER 0)
             foreach(_rt_so IN LISTS _rt_plugin_so_files)
                 if(NOT IS_SYMLINK "${_rt_so}")
                     ep_check_binary_deps("${_rt_so}" _rt_so_deps)
+
+                    get_property(_rt_missing GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_MISSING)
+                    if(_rt_missing)
+                        list(REMOVE_DUPLICATES _rt_missing)
+                        string(JOIN "\n    " _rt_missing_str ${_rt_missing})
+                        get_filename_component(_rt_so_name "${_rt_so}" NAME)
+                        message(FATAL_ERROR
+                            "[install_project] Плагін ${_rt_so_name}: не знайдено залежності (MISSING):\n"
+                            "    ${_rt_missing_str}")
+                    endif()
+
+                    if(CMAKE_SYSROOT)
+                        get_property(_rt_sys GLOBAL PROPERTY _EP_BINARYDEPS_SUMMARY_SYS)
+                        if(_rt_sys)
+                            list(REMOVE_DUPLICATES _rt_sys)
+                            string(JOIN "\n    " _rt_sys_str ${_rt_sys})
+                            get_filename_component(_rt_so_name "${_rt_so}" NAME)
+                            message(FATAL_ERROR
+                                "[install_project] Плагін ${_rt_so_name}: хостові бібліотеки при крос-компіляції (SYSTEM):\n"
+                                "    ${_rt_sys_str}")
+                        endif()
+                    endif()
+
                     foreach(_dep IN LISTS _rt_so_deps)
                         file(INSTALL "${_dep}"
                             DESTINATION "${_lib_dir}"
