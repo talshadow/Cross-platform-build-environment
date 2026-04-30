@@ -210,7 +210,7 @@ endforeach()
             GIT_SHALLOW     ON
             SOURCE_DIR      "${EP_SOURCES_DIR}/libcamera"
             PATCH_COMMAND
-            git apply "${CMAKE_CURRENT_LIST_DIR}/patches/libcamera-relocatable-paths.patch"
+            git apply --3way "${CMAKE_CURRENT_LIST_DIR}/patches/libcamera-relocatable-paths.patch"
             CONFIGURE_COMMAND
             env
             PKG_CONFIG_PATH=${EXTERNAL_INSTALL_PREFIX}/lib/pkgconfig:${EXTERNAL_INSTALL_PREFIX}/share/pkgconfig
@@ -246,7 +246,7 @@ endforeach()
             COMMAND ${CMAKE_COMMAND} -E make_directory
                 "${EXTERNAL_INSTALL_PREFIX}/dependencies/libcamera/key/ipa"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "<BINARY_DIR>/src/ipa/ipa-priv-key.pem"
+                "<BINARY_DIR>/src/ipa-priv-key.pem"
                 "${EXTERNAL_INSTALL_PREFIX}/dependencies/libcamera/key/ipa/ipa-priv-key.pem"
             BUILD_BYPRODUCTS "${_libcamera_lib}" "${_libcamera_base_lib}"
             LOG_DOWNLOAD    ON

@@ -10,10 +10,18 @@ index 14e6471..62da61e 100644
  
  } /* namespace libcamera::utils */
 diff --git a/src/libcamera/ipa_manager.cpp b/src/libcamera/ipa_manager.cpp
-index 830750d..7fb2b66 100644
+index 830750d..74b4610 100644
 --- a/src/libcamera/ipa_manager.cpp
 +++ b/src/libcamera/ipa_manager.cpp
-@@ -141,12 +141,16 @@ IPAManager::IPAManager()
+@@ -19,6 +19,7 @@
+ #include "libcamera/internal/ipa_module.h"
+ #include "libcamera/internal/ipa_proxy.h"
+ #include "libcamera/internal/pipeline_handler.h"
++#include "libcamera/internal/source_paths.h"
+ 
+ /**
+  * \file ipa_manager.h
+@@ -141,12 +142,16 @@ IPAManager::IPAManager()
  		ipaCount += addDir(ipaBuildPath.c_str(), maxDepth);
  	}
  
@@ -37,10 +45,18 @@ index 830750d..7fb2b66 100644
  
  IPAManager::~IPAManager() = default;
 diff --git a/src/libcamera/ipa_proxy.cpp b/src/libcamera/ipa_proxy.cpp
-index b5c13a3..2bf332c 100644
+index b5c13a3..c08ae04 100644
 --- a/src/libcamera/ipa_proxy.cpp
 +++ b/src/libcamera/ipa_proxy.cpp
-@@ -83,8 +83,12 @@ std::string ipaConfigurationFile(const std::string &ipaName, const std::string &
+@@ -15,6 +15,7 @@
+ #include <libcamera/base/utils.h>
+ 
+ #include "libcamera/internal/ipa_module.h"
++#include "libcamera/internal/source_paths.h"
+ 
+ /**
+  * \file ipa_proxy.h
+@@ -83,8 +84,12 @@ std::string ipaConfigurationFile(const std::string &ipaName, const std::string &
  			return confPath;
  
  	} else {
@@ -55,7 +71,7 @@ index b5c13a3..2bf332c 100644
  			std::string confPath = dir + "/" + ipaName + "/" + name;
  			ret = stat(confPath.c_str(), &statbuf);
  			if (ret == 0 && (statbuf.st_mode & S_IFMT) == S_IFREG)
-@@ -249,10 +253,15 @@ std::string IPAProxy::resolvePath(const std::string &file) const
+@@ -249,10 +254,15 @@ std::string IPAProxy::resolvePath(const std::string &file) const
  		return std::string();
  	}
  
@@ -76,10 +92,18 @@ index b5c13a3..2bf332c 100644
  	return std::string();
  }
 diff --git a/src/libcamera/pipeline_handler.cpp b/src/libcamera/pipeline_handler.cpp
-index e5f9e55..1f44f85 100644
+index e5f9e55..c7b7cb0 100644
 --- a/src/libcamera/pipeline_handler.cpp
 +++ b/src/libcamera/pipeline_handler.cpp
-@@ -647,9 +647,11 @@ std::string PipelineHandler::configurationFile(const std::string &subdir,
+@@ -24,6 +24,7 @@
+ #include "libcamera/internal/device_enumerator.h"
+ #include "libcamera/internal/media_device.h"
+ #include "libcamera/internal/request.h"
++#include "libcamera/internal/source_paths.h"
+ #include "libcamera/internal/tracepoints.h"
+ 
+ /**
+@@ -647,9 +648,11 @@ std::string PipelineHandler::configurationFile(const std::string &subdir,
  			<< "libcamera is not installed. Loading platform configuration file from '"
  			<< confPath << "'";
  	} else {
