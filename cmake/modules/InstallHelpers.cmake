@@ -29,6 +29,7 @@
 
 include(GNUInstallDirs)
 include(RuntimeDeps)
+include(BinaryDeps)
 
 # ---------------------------------------------------------------------------
 # target_add_ep_rpath(<target>)
