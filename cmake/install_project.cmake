@@ -188,7 +188,7 @@ if(DO_STRIP AND EP_RT_COUNT GREATER 0)
             continue()
         endif()
 
-        file(GLOB _rt_ipa_modules "${_rt_installed_dir}/ipa_*.so")
+        file(GLOB_RECURSE _rt_ipa_modules "${_rt_installed_dir}/ipa_*.so")
         foreach(_mod IN LISTS _rt_ipa_modules)
             execute_process(
                 COMMAND "${CMAKE_STRIP}" --strip-debug "${_mod}"
