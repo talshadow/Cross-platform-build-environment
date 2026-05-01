@@ -26,8 +26,9 @@ set(LIBIR_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_libir_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libir.so")
-set(_libir_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_libir_prefix "lib/libir.so")
+set(_libir_lib "${_libir_prefix}/lib/libir.so")
+set(_libir_inc "${_libir_prefix}/include")
 
 if(USE_SYSTEM_LIBIR)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -49,7 +50,7 @@ if(USE_SYSTEM_LIBIR)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(libir QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(libir_FOUND)
@@ -60,7 +61,7 @@ else()
         message(STATUS "[LibIr] Знайдено .so у ${EXTERNAL_INSTALL_PREFIX}")
 
     elseif(LIBIR_GIT_REPO STREQUAL "")
-        message(WARNING "[LibIr] LIBIR_GIT_REPO не задано — встановіть -DLIBIR_GIT_REPO=<url> або -DUSE_SYSTEM_LIBIR=ON")
+        message(FATAL_ERROR "[LibIr] LIBIR_GIT_REPO не задано — задайте -DLIBIR_GIT_REPO=<url> або -DUSE_SYSTEM_LIBIR=ON")
 
     else()
         message(STATUS "[LibIr] Буде зібрано з джерел (${LIBIR_VERSION})")

@@ -41,7 +41,8 @@ set(EIGEN3_GIT_REPO
 # ---------------------------------------------------------------------------
 # Eigen встановлює заголовки у <prefix>/include/eigen3/
 # Представницький файл як маркер для Ninja (BUILD_BYPRODUCTS)
-set(_eigen_inc "${EXTERNAL_INSTALL_PREFIX}/include/eigen3")
+ep_resolve_prefix(_eigen_prefix "include/eigen3/Eigen/Core")
+set(_eigen_inc "${_eigen_prefix}/include/eigen3")
 set(_eigen_hdr "${_eigen_inc}/Eigen/Core")
 
 if(USE_SYSTEM_EIGEN3)
@@ -54,7 +55,7 @@ else()
     # Eigen встановлює Eigen3Config.cmake → find_package знайде його
     # в EXTERNAL_INSTALL_PREFIX через HINTS.
     find_package(Eigen3 QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(Eigen3_FOUND)
@@ -104,8 +105,8 @@ endif()
 if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
     # Формуємо впорядковані списки директорій для пошуку: спочатку наш prefix,
     # потім sysroot (або системний /usr/lib при нативній збірці).
-    set(_eigen_lib_dirs "${EXTERNAL_INSTALL_PREFIX}/lib")
-    set(_eigen_inc_dirs "${EXTERNAL_INSTALL_PREFIX}/include")
+    set(_eigen_lib_dirs "${_eigen_prefix}/lib")
+    set(_eigen_inc_dirs "${_eigen_prefix}/include")
     if(CMAKE_SYSROOT)
         set(_sr_lib "${CMAKE_SYSROOT}/usr/lib")
         if(CMAKE_LIBRARY_ARCHITECTURE)

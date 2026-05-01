@@ -26,14 +26,18 @@ option(ZLIB_USE_GIT
 set(ZLIB_VERSION  "1.3.1"
     CACHE STRING "Версія zlib для збірки з джерел")
 
+set(ZLIB_SHA256  ""
+    CACHE STRING "SHA256 для zlib архіву (порожньо = без верифікації; заповнити через build-system-update-hashes.sh)")
+
 set(ZLIB_GIT_REPO
     "https://github.com/madler/zlib.git"
     CACHE STRING "Git репозиторій zlib (використовується тільки при ZLIB_USE_GIT=ON)")
 
 # ---------------------------------------------------------------------------
 
-set(_zlib_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libz.so")
-set(_zlib_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_zlib_prefix "lib/libz.so")
+set(_zlib_lib "${_zlib_prefix}/lib/libz.so")
+set(_zlib_inc "${_zlib_prefix}/include")
 
 if(USE_SYSTEM_ZLIB)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -42,7 +46,7 @@ if(USE_SYSTEM_ZLIB)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(ZLIB QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(ZLIB QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(ZLIB_FOUND)
         message(STATUS "[Zlib] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
@@ -68,6 +72,9 @@ else()
                 URL                 "${_zlib_archive_url}"
                 DOWNLOAD_EXTRACT_TIMESTAMP ON
             )
+            if(ZLIB_SHA256)
+                list(APPEND _zlib_download_args URL_HASH "SHA256=${ZLIB_SHA256}")
+            endif()
             unset(_zlib_archive_url)
         endif()
 

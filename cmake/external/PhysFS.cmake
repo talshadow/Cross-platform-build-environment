@@ -26,8 +26,9 @@ set(PHYSFS_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_physfs_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libphysfs.so")
-set(_physfs_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_physfs_prefix "lib/libphysfs.so")
+set(_physfs_lib "${_physfs_prefix}/lib/libphysfs.so")
+set(_physfs_inc "${_physfs_prefix}/include")
 
 if(USE_SYSTEM_PHYSFS)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -36,7 +37,7 @@ if(USE_SYSTEM_PHYSFS)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    set(PhysFS_ROOT "${EXTERNAL_INSTALL_PREFIX}")
+    set(PhysFS_ROOT "${_physfs_prefix}")
     find_package(PhysFS QUIET)
     unset(PhysFS_ROOT)
 

@@ -27,8 +27,9 @@ set(LIBFMT_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_fmt_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libfmt.so")
-set(_fmt_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_fmt_prefix "lib/libfmt.so")
+set(_fmt_lib "${_fmt_prefix}/lib/libfmt.so")
+set(_fmt_inc "${_fmt_prefix}/include")
 
 if(USE_SYSTEM_LIBFMT)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -37,7 +38,7 @@ if(USE_SYSTEM_LIBFMT)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(fmt QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(fmt QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(fmt_FOUND)
         message(STATUS "[LibFmt] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 

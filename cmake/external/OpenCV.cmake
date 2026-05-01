@@ -91,6 +91,12 @@ option(OPENCV_USE_GIT
 set(OPENCV_VERSION  "4.13.0"
     CACHE STRING "Версія OpenCV для збірки з джерел")
 
+set(OPENCV_SHA256  ""
+    CACHE STRING "SHA256 для OpenCV архіву (порожньо = без верифікації; заповнити через build-system-update-hashes.sh)")
+
+set(OPENCV_CONTRIB_SHA256  ""
+    CACHE STRING "SHA256 для opencv_contrib архіву (порожньо = без верифікації; заповнити через build-system-update-hashes.sh)")
+
 set(OPENCV_GIT_REPO
     "https://github.com/opencv/opencv.git"
     CACHE STRING "Git репозиторій OpenCV (використовується тільки при OPENCV_USE_GIT=ON)")
@@ -101,7 +107,7 @@ set(OPENCV_CONTRIB_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_ocv_prefix  "${EXTERNAL_INSTALL_PREFIX}")
+ep_resolve_prefix(_ocv_prefix "lib/libopencv_core.so")
 set(_ocv_lib_dir "${_ocv_prefix}/lib")
 set(_ocv_inc_dir "${_ocv_prefix}/include/opencv4")
 set(_ocv_core    "${_ocv_lib_dir}/libopencv_core.so")
@@ -234,6 +240,9 @@ else()
                     URL "https://github.com/opencv/opencv_contrib/archive/${OPENCV_VERSION}.tar.gz"
                     DOWNLOAD_EXTRACT_TIMESTAMP ON
                 )
+                if(OPENCV_CONTRIB_SHA256)
+                    list(APPEND _ocv_contrib_download_args URL_HASH "SHA256=${OPENCV_CONTRIB_SHA256}")
+                endif()
             endif()
 
             ExternalProject_Add(opencv_contrib_ep
@@ -375,6 +384,9 @@ else()
                 URL                 "${_ocv_archive_url}"
                 DOWNLOAD_EXTRACT_TIMESTAMP ON
             )
+            if(OPENCV_SHA256)
+                list(APPEND _ocv_download_args URL_HASH "SHA256=${OPENCV_SHA256}")
+            endif()
             unset(_ocv_archive_url)
         endif()
 

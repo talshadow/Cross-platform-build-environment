@@ -26,8 +26,9 @@ set(EASYPROFILER_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_ep_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libeasy_profiler.so")
-set(_ep_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_ep_prefix "lib/libeasy_profiler.so")
+set(_ep_lib "${_ep_prefix}/lib/libeasy_profiler.so")
+set(_ep_inc "${_ep_prefix}/include")
 
 if(USE_SYSTEM_EASYPROFILER)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -37,7 +38,7 @@ if(USE_SYSTEM_EASYPROFILER)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(easy_profiler QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(easy_profiler_FOUND)

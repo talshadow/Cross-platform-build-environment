@@ -39,8 +39,9 @@ set(LIBTIFF_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_tiff_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libtiff.so")
-set(_tiff_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_tiff_prefix "lib/libtiff.so")
+set(_tiff_lib "${_tiff_prefix}/lib/libtiff.so")
+set(_tiff_inc "${_tiff_prefix}/include")
 
 if(USE_SYSTEM_LIBTIFF)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -49,7 +50,7 @@ if(USE_SYSTEM_LIBTIFF)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(TIFF QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(TIFF QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(TIFF_FOUND)
         message(STATUS "[LibTiff] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 

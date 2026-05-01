@@ -26,8 +26,9 @@ set(LIBPNG_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_png_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libpng.so")
-set(_png_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_png_prefix "lib/libpng.so")
+set(_png_lib "${_png_prefix}/lib/libpng.so")
+set(_png_inc "${_png_prefix}/include")
 
 if(USE_SYSTEM_LIBPNG)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -39,7 +40,7 @@ if(USE_SYSTEM_LIBPNG)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     # HINTS + NO_DEFAULT_PATH: шукати лише в EXTERNAL_INSTALL_PREFIX, не в системі.
-    find_package(PNG QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(PNG QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(PNG_FOUND)
         message(STATUS "[LibPng] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 

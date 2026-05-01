@@ -32,8 +32,9 @@ set(AIRSIM_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_airsim_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libAirLib.so")
-set(_airsim_inc "${EXTERNAL_INSTALL_PREFIX}/include/AirSim")
+ep_resolve_prefix(_airsim_prefix "lib/libAirLib.so")
+set(_airsim_lib "${_airsim_prefix}/lib/libAirLib.so")
+set(_airsim_inc "${_airsim_prefix}/include/AirSim")
 
 if(USE_SYSTEM_AIRSIM)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -44,7 +45,7 @@ if(USE_SYSTEM_AIRSIM)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(AirSim QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(AirSim_FOUND)

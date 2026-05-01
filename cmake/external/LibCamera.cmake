@@ -34,9 +34,10 @@ set(LIBCAMERA_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_libcamera_lib      "${EXTERNAL_INSTALL_PREFIX}/lib/libcamera.so")
-set(_libcamera_base_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libcamera-base.so")
-set(_libcamera_inc      "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_libcamera_prefix "lib/libcamera.so")
+set(_libcamera_lib      "${_libcamera_prefix}/lib/libcamera.so")
+set(_libcamera_base_lib "${_libcamera_prefix}/lib/libcamera-base.so")
+set(_libcamera_inc      "${_libcamera_prefix}/include")
 
 # libcamera складається з двох бібліотек: libcamera-base.so (Thread, EventDispatcher тощо)
 # та libcamera.so. Цей макрос створює обидва IMPORTED таргети і прописує залежність
@@ -88,7 +89,7 @@ if(USE_SYSTEM_LIBCAMERA)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add (Meson) ───────────────
     find_package(libcamera QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(libcamera_FOUND)

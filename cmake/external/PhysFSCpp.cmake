@@ -29,7 +29,8 @@ set(PHYSFSCPP_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_physfscpp_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_physfscpp_prefix "include/physfs.hpp")
+set(_physfscpp_inc "${_physfscpp_prefix}/include")
 
 if(USE_SYSTEM_PHYSFSCPP)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -43,7 +44,7 @@ if(USE_SYSTEM_PHYSFSCPP)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(physfs-hpp QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(physfs-hpp_FOUND)

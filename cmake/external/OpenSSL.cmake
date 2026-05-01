@@ -49,9 +49,10 @@ set(OPENSSL_GIT_REPO
 # ---------------------------------------------------------------------------
 
 # OpenSSL 3.x: soname = libssl.so.3, libcrypto.so.3
-set(_ssl_lib3    "${EXTERNAL_INSTALL_PREFIX}/lib/libssl.so.3")
-set(_crypto_lib3 "${EXTERNAL_INSTALL_PREFIX}/lib/libcrypto.so.3")
-set(_ssl_inc     "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_ssl_prefix "lib/libssl.so.3")
+set(_ssl_lib3    "${_ssl_prefix}/lib/libssl.so.3")
+set(_crypto_lib3 "${_ssl_prefix}/lib/libcrypto.so.3")
+set(_ssl_inc     "${_ssl_prefix}/include")
 
 if(USE_SYSTEM_OPENSSL)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -60,7 +61,7 @@ if(USE_SYSTEM_OPENSSL)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(OpenSSL QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(OpenSSL QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(OPENSSL_FOUND)
         message(STATUS "[OpenSSL] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # find_package(OpenSSL) вже створив OpenSSL::SSL та OpenSSL::Crypto

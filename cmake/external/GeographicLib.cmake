@@ -28,8 +28,9 @@ set(GEOGRAPHICLIB_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_geolib_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libGeographicLib.so")
-set(_geolib_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_geolib_prefix "lib/libGeographicLib.so")
+set(_geolib_lib "${_geolib_prefix}/lib/libGeographicLib.so")
+set(_geolib_inc "${_geolib_prefix}/include")
 
 if(USE_SYSTEM_GEOGRAPHICLIB)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -41,7 +42,7 @@ else()
     # GeographicLib встановлює CMake config-файл → find_package(GeographicLib)
     # знайде його і створить GeographicLib::GeographicLib автоматично.
     find_package(GeographicLib QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(GeographicLib_FOUND)

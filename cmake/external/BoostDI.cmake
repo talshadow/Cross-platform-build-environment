@@ -26,7 +26,8 @@ set(BOOSTDI_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_boostdi_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_boostdi_prefix "include/boost/di.hpp")
+set(_boostdi_inc "${_boostdi_prefix}/include")
 
 if(USE_SYSTEM_BOOSTDI)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -37,7 +38,7 @@ if(USE_SYSTEM_BOOSTDI)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(di QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(di_FOUND)

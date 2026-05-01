@@ -33,8 +33,9 @@ else()
     set(_ncnn_suffix "")
 endif()
 
-set(_ncnn_lib "${EXTERNAL_INSTALL_PREFIX}/lib/libncnn${_ncnn_suffix}.so")
-set(_ncnn_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_ncnn_prefix "lib/libncnn${_ncnn_suffix}.so")
+set(_ncnn_lib "${_ncnn_prefix}/lib/libncnn${_ncnn_suffix}.so")
+set(_ncnn_inc "${_ncnn_prefix}/include")
 
 if(USE_SYSTEM_NCNN)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -44,7 +45,7 @@ if(USE_SYSTEM_NCNN)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(ncnn QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(ncnn_FOUND)

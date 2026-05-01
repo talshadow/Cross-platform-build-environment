@@ -26,7 +26,8 @@ set(BOOSTSML_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_boostsml_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_boostsml_prefix "include/boost/sml.hpp")
+set(_boostsml_inc "${_boostsml_prefix}/include")
 
 if(USE_SYSTEM_BOOSTSML)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -38,7 +39,7 @@ if(USE_SYSTEM_BOOSTSML)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(sml QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(sml_FOUND)

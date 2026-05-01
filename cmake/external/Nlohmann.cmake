@@ -25,7 +25,8 @@ set(NLOHMANN_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_nlohmann_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_nlohmann_prefix "include/nlohmann/json.hpp")
+set(_nlohmann_inc "${_nlohmann_prefix}/include")
 
 if(USE_SYSTEM_NLOHMANN)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -35,7 +36,7 @@ if(USE_SYSTEM_NLOHMANN)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(nlohmann_json QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(nlohmann_json_FOUND)

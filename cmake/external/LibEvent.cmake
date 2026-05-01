@@ -31,9 +31,10 @@ set(LIBEVENT_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_libevent_core  "${EXTERNAL_INSTALL_PREFIX}/lib/libevent_core.so")
-set(_libevent_extra "${EXTERNAL_INSTALL_PREFIX}/lib/libevent_extra.so")
-set(_libevent_inc   "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_libevent_prefix "lib/libevent_core.so")
+set(_libevent_core  "${_libevent_prefix}/lib/libevent_core.so")
+set(_libevent_extra "${_libevent_prefix}/lib/libevent_extra.so")
+set(_libevent_inc   "${_libevent_prefix}/include")
 
 if(USE_SYSTEM_LIBEVENT)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -45,7 +46,7 @@ else()
     # LibeventConfig.cmake встановлюється при cmake install → find_package знайде
     # його в EXTERNAL_INSTALL_PREFIX.
     find_package(Libevent QUIET COMPONENTS core
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(Libevent_FOUND)

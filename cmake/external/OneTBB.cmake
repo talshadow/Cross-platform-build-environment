@@ -27,6 +27,9 @@ option(ONETBB_USE_GIT
 set(ONETBB_VERSION  "2022.3.0"
     CACHE STRING "Версія oneTBB для збірки з джерел")
 
+set(ONETBB_SHA256  ""
+    CACHE STRING "SHA256 для oneTBB архіву (порожньо = без верифікації; заповнити через build-system-update-hashes.sh)")
+
 set(ONETBB_GIT_REPO
     "https://github.com/uxlfoundation/oneTBB.git"
     CACHE STRING "Git репозиторій oneTBB (використовується тільки при ONETBB_USE_GIT=ON)")
@@ -40,9 +43,10 @@ else()
     set(_tbb_suffix "")
 endif()
 
-set(_tbb_lib        "${EXTERNAL_INSTALL_PREFIX}/lib/libtbb${_tbb_suffix}.so")
-set(_tbbmalloc_lib  "${EXTERNAL_INSTALL_PREFIX}/lib/libtbbmalloc${_tbb_suffix}.so")
-set(_tbb_inc        "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_tbb_prefix "lib/libtbb${_tbb_suffix}.so")
+set(_tbb_lib        "${_tbb_prefix}/lib/libtbb${_tbb_suffix}.so")
+set(_tbbmalloc_lib  "${_tbb_prefix}/lib/libtbbmalloc${_tbb_suffix}.so")
+set(_tbb_inc        "${_tbb_prefix}/include")
 
 if(USE_SYSTEM_ONETBB)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -51,7 +55,7 @@ if(USE_SYSTEM_ONETBB)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(TBB QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(TBB QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(TBB_FOUND)
         message(STATUS "[oneTBB] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 
@@ -78,6 +82,9 @@ else()
                 URL                 "${_tbb_archive_url}"
                 DOWNLOAD_EXTRACT_TIMESTAMP ON
             )
+            if(ONETBB_SHA256)
+                list(APPEND _tbb_download_args URL_HASH "SHA256=${ONETBB_SHA256}")
+            endif()
             unset(_tbb_archive_url)
         endif()
 

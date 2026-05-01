@@ -36,14 +36,18 @@ option(BOOST_LTO
 set(BOOST_VERSION  "1.90.0"
     CACHE STRING "Версія Boost для збірки з джерел")
 
+set(BOOST_SHA256  ""
+    CACHE STRING "SHA256 для Boost архіву (порожньо = без верифікації; заповнити через build-system-update-hashes.sh)")
+
 set(BOOST_GIT_REPO
     "https://github.com/boostorg/boost.git"
     CACHE STRING "Git репозиторій Boost (використовується тільки при BOOST_USE_GIT=ON)")
 
 # ---------------------------------------------------------------------------
 
-set(_boost_inc     "${EXTERNAL_INSTALL_PREFIX}/include")
-set(_boost_lib_po  "${EXTERNAL_INSTALL_PREFIX}/lib/libboost_program_options.so")
+ep_resolve_prefix(_boost_prefix "lib/libboost_program_options.so")
+set(_boost_inc     "${_boost_prefix}/include")
+set(_boost_lib_po  "${_boost_prefix}/lib/libboost_program_options.so")
 
 if(USE_SYSTEM_BOOST)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -52,7 +56,7 @@ if(USE_SYSTEM_BOOST)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(Boost QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" COMPONENTS program_options NO_DEFAULT_PATH)
+    find_package(Boost QUIET HINTS ${_EP_HINT_DIRS} COMPONENTS program_options NO_DEFAULT_PATH)
     if(Boost_FOUND)
         message(STATUS "[Boost] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
         # find_package(Boost) вже створив Boost::headers та Boost::program_options
@@ -153,6 +157,9 @@ else()
             URL                 "${_boost_archive_url}"
             DOWNLOAD_EXTRACT_TIMESTAMP ON
         )
+        if(BOOST_SHA256)
+            list(APPEND _boost_download_args URL_HASH "SHA256=${BOOST_SHA256}")
+        endif()
     unset(_boost_ver_underscore)
 endif()
 

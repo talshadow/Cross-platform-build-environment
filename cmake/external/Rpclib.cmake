@@ -30,8 +30,9 @@ set(RPCLIB_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_rpclib_lib "${EXTERNAL_INSTALL_PREFIX}/lib/librpc.so")
-set(_rpclib_inc "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_rpclib_prefix "lib/librpc.so")
+set(_rpclib_lib "${_rpclib_prefix}/lib/librpc.so")
+set(_rpclib_inc "${_rpclib_prefix}/include")
 
 if(USE_SYSTEM_RPCLIB)
     # ── Системна бібліотека ─────────────────────────────────────────────────
@@ -42,7 +43,7 @@ if(USE_SYSTEM_RPCLIB)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
     find_package(rpclib QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(rpclib_FOUND)

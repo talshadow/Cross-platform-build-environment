@@ -352,10 +352,46 @@ endif()
 file(MAKE_DIRECTORY "${EP_SOURCES_DIR}")
 message(STATUS "[ExternalDeps] Sources dir: ${EP_SOURCES_DIR}")
 
+# ---------------------------------------------------------------------------
+# EP_PREBUILT_PREFIX
+#
+# Read-only prefix з попередньо зібраними EP артефактами (необов'язково).
+# Якщо вказано — перевіряється ПЕРЕД EXTERNAL_INSTALL_PREFIX:
+#   - у find_package через _EP_HINT_DIRS (замість "${EXTERNAL_INSTALL_PREFIX}")
+#   - у EXISTS-перевірках через ep_resolve_prefix()
+# Нові EP-збірки завжди йдуть у EXTERNAL_INSTALL_PREFIX.
+#
+# Використання:
+#   cmake --preset native-debug -DEP_PREBUILT_PREFIX=/shared/native-prebuilt
+# ---------------------------------------------------------------------------
+set(EP_PREBUILT_PREFIX "" CACHE PATH
+    "Read-only prefix з готовими EP артефактами (необов'язково)")
+if(EP_PREBUILT_PREFIX)
+    if(NOT IS_DIRECTORY "${EP_PREBUILT_PREFIX}")
+        message(WARNING "[ExternalDeps] EP_PREBUILT_PREFIX='${EP_PREBUILT_PREFIX}' не існує — ігнорується")
+        set(EP_PREBUILT_PREFIX "" CACHE PATH "" FORCE)
+    else()
+        message(STATUS "[ExternalDeps] Prebuilt prefix: ${EP_PREBUILT_PREFIX}")
+    endif()
+endif()
+
 # Додаємо до CMAKE_PREFIX_PATH і CMAKE_FIND_ROOT_PATH щоб find_package
 # знаходив вже встановлені бібліотеки навіть у крос-режимі (ONLY mode).
+# Порядок: EP_PREBUILT_PREFIX (якщо є) → EXTERNAL_INSTALL_PREFIX → решта.
+if(EP_PREBUILT_PREFIX)
+    list(PREPEND CMAKE_PREFIX_PATH    "${EP_PREBUILT_PREFIX}")
+    list(PREPEND CMAKE_FIND_ROOT_PATH "${EP_PREBUILT_PREFIX}")
+endif()
 list(PREPEND CMAKE_PREFIX_PATH   "${EXTERNAL_INSTALL_PREFIX}")
 list(PREPEND CMAKE_FIND_ROOT_PATH "${EXTERNAL_INSTALL_PREFIX}")
+
+# _EP_HINT_DIRS — unified HINTS для find_package(... HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH).
+# Використовується у всіх Lib*.cmake замість "${EXTERNAL_INSTALL_PREFIX}".
+if(EP_PREBUILT_PREFIX)
+    set(_EP_HINT_DIRS "${EP_PREBUILT_PREFIX}" "${EXTERNAL_INSTALL_PREFIX}")
+else()
+    set(_EP_HINT_DIRS "${EXTERNAL_INSTALL_PREFIX}")
+endif()
 
 # ---------------------------------------------------------------------------
 # RPATH: $ORIGIN/../lib — відносний до бінарника, портабельний для RPi
@@ -629,6 +665,75 @@ function(ep_imported_interface_from_ep target ep_name inc_dir)
     _ep_make_sync_target(${ep_name})
     set_property(TARGET ${target} APPEND PROPERTY
         INTERFACE_LINK_LIBRARIES _ep_sync_${ep_name})
+endfunction()
+
+# ---------------------------------------------------------------------------
+# ep_find_or_build(<target> <package_name> <lib_path> <inc_dir> [find_package args...])
+#
+# Спільний перший крок для більшості Lib*.cmake файлів:
+#   1. find_package(package_name QUIET HINTS EXTERNAL_INSTALL_PREFIX NO_DEFAULT_PATH ...)
+#      → якщо знайдено: target вже готовий, встановлює <target>_FROM = "find_package"
+#   2. EXISTS lib_path → ep_imported_library(target lib_path inc_dir)
+#      → встановлює <target>_FROM = "imported"
+#   3. Інакше → встановлює <target>_FROM = "build"
+#      Caller відповідає за ExternalProject_Add.
+#
+# Аргументи:
+#   target        — ім'я CMake imported target (напр. PNG::PNG)
+#   package_name  — ім'я пакета для find_package (напр. PNG)
+#   lib_path      — очікуваний шлях до .so після EP build
+#   inc_dir       — очікуваний include dir після EP build
+#   [...]         — додаткові аргументи для find_package (COMPONENTS тощо)
+#
+# Використання:
+#   ep_find_or_build(PNG::PNG PNG "${_png_lib}" "${_png_inc}")
+#   if(PNG_FROM STREQUAL "build")
+#       ExternalProject_Add(libpng_ep ...)
+#       ep_imported_library_from_ep(PNG::PNG libpng_ep "${_png_lib}" "${_png_inc}")
+#   endif()
+#
+# Результат виставляється у <package_name>_FROM (не <target>_FROM), бо target
+# може містити '::' що є неприпустимим у CMake-імені змінної.
+# ---------------------------------------------------------------------------
+function(ep_find_or_build target package_name lib_path inc_dir)
+    find_package(${package_name} QUIET
+        HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH ${ARGN})
+    if(${package_name}_FOUND)
+        set(${package_name}_FROM "find_package" PARENT_SCOPE)
+        return()
+    endif()
+    if(EXISTS "${lib_path}")
+        ep_imported_library(${target} "${lib_path}" "${inc_dir}")
+        set(${package_name}_FROM "imported" PARENT_SCOPE)
+        return()
+    endif()
+    set(${package_name}_FROM "build" PARENT_SCOPE)
+endfunction()
+
+# ---------------------------------------------------------------------------
+# ep_resolve_prefix(<out_var> <check_relpath>)
+#
+# Повертає EP_PREBUILT_PREFIX якщо там існує <check_relpath>, інакше
+# EXTERNAL_INSTALL_PREFIX. Використовується на початку кожного Lib*.cmake
+# для вибору між prebuilt та build-output prefix.
+#
+# Аргументи:
+#   out_var      — ім'я змінної для результату (PARENT_SCOPE)
+#   check_relpath — відносний шлях для EXISTS-перевірки
+#                   "lib/libfoo.so"         — для shared libs
+#                   "include/foo.hpp"       — для header-only
+#
+# Використання:
+#   ep_resolve_prefix(_foo_prefix "lib/libfoo.so")
+#   set(_foo_lib "${_foo_prefix}/lib/libfoo.so")
+#   set(_foo_inc "${_foo_prefix}/include")
+# ---------------------------------------------------------------------------
+function(ep_resolve_prefix out_var check_relpath)
+    if(EP_PREBUILT_PREFIX AND EXISTS "${EP_PREBUILT_PREFIX}/${check_relpath}")
+        set(${out_var} "${EP_PREBUILT_PREFIX}" PARENT_SCOPE)
+    else()
+        set(${out_var} "${EXTERNAL_INSTALL_PREFIX}" PARENT_SCOPE)
+    endif()
 endfunction()
 
 # ---------------------------------------------------------------------------

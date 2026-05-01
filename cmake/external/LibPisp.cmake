@@ -37,8 +37,9 @@ set(LIBPISP_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_libpisp_lib  "${EXTERNAL_INSTALL_PREFIX}/lib/libpisp.so")
-set(_libpisp_inc  "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_libpisp_prefix "lib/libpisp.so")
+set(_libpisp_lib  "${_libpisp_prefix}/lib/libpisp.so")
+set(_libpisp_inc  "${_libpisp_prefix}/include")
 
 if(USE_SYSTEM_LIBPISP)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -70,7 +71,7 @@ if(USE_SYSTEM_LIBPISP)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add (Meson) ───────────────
     find_package(libpisp QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(libpisp_FOUND)

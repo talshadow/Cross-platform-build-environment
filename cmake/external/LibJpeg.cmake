@@ -33,9 +33,10 @@ set(LIBJPEG_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_jpeg_lib       "${EXTERNAL_INSTALL_PREFIX}/lib/libjpeg.so")
-set(_turbojpeg_lib  "${EXTERNAL_INSTALL_PREFIX}/lib/libturbojpeg.so")
-set(_jpeg_inc       "${EXTERNAL_INSTALL_PREFIX}/include")
+ep_resolve_prefix(_jpeg_prefix "lib/libjpeg.so")
+set(_jpeg_lib       "${_jpeg_prefix}/lib/libjpeg.so")
+set(_turbojpeg_lib  "${_jpeg_prefix}/lib/libturbojpeg.so")
+set(_jpeg_inc       "${_jpeg_prefix}/include")
 
 if(USE_SYSTEM_LIBJPEG)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -44,7 +45,7 @@ if(USE_SYSTEM_LIBJPEG)
 
 else()
     # ── Алгоритм: find_package → ExternalProject_Add ────────────────────────
-    find_package(JPEG QUIET HINTS "${EXTERNAL_INSTALL_PREFIX}" NO_DEFAULT_PATH)
+    find_package(JPEG QUIET HINTS ${_EP_HINT_DIRS} NO_DEFAULT_PATH)
     if(JPEG_FOUND)
         message(STATUS "[LibJpeg] Знайдено готову бібліотеку у ${EXTERNAL_INSTALL_PREFIX}")
 

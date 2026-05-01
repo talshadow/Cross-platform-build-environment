@@ -37,8 +37,9 @@ set(RPICAMAPPS_GIT_REPO
 
 # ---------------------------------------------------------------------------
 
-set(_rpicam_lib "${EXTERNAL_INSTALL_PREFIX}/lib/librpicam_app.so")
-set(_rpicam_inc "${EXTERNAL_INSTALL_PREFIX}/include/rpicam-apps")
+ep_resolve_prefix(_rpicam_prefix "lib/librpicam_app.so")
+set(_rpicam_lib "${_rpicam_prefix}/lib/librpicam_app.so")
+set(_rpicam_inc "${_rpicam_prefix}/include/rpicam-apps")
 
 if(USE_SYSTEM_RPICAMAPPS)
     # ── Системна бібліотека / sysroot ───────────────────────────────────────
@@ -70,7 +71,7 @@ if(USE_SYSTEM_RPICAMAPPS)
 else()
     # ── Алгоритм: find_package → ExternalProject_Add (Meson) ───────────────
     find_package(rpicam_app QUIET
-        HINTS "${EXTERNAL_INSTALL_PREFIX}"
+        HINTS ${_EP_HINT_DIRS}
         NO_DEFAULT_PATH)
 
     if(rpicam_app_FOUND)
