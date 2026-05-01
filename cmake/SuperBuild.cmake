@@ -118,7 +118,7 @@ endif()
 # Передаємо прапори USE_SYSTEM_* (щоб основний проєкт не намагався будувати зайве)
 foreach(_lib IN ITEMS ZLIB LIBPNG LIBJPEG LIBTIFF BOOST OPENSSL OPENCV GEOGRAPHICLIB EIGEN3
                       LIBEVENT LIBCAMERA LIBPISP NLOHMANN BOOSTDI BOOSTSML
-                      EASYPROFILER NCNN LIBFMT ONETBB LIBIR AIRSIM PHYSYS PHYSYSCPP RPICAMAPPS)
+                      EASYPROFILER NCNN LIBFMT ONETBB LIBIR AIRSIM PHYSFS PHYSFSCPP RPICAMAPPS)
     if(DEFINED USE_SYSTEM_${_lib})
         list(APPEND _sb_main_cmake_args
             -DUSE_SYSTEM_${_lib}=${USE_SYSTEM_${_lib}})

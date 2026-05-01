@@ -21,8 +21,8 @@ cmake/external/
 ├── LibPisp.cmake       ← LibCamera, Boost
 ├── RpiCamApps.cmake    ← LibCamera, Boost
 ├── AirSim.cmake        ← Eigen3, Rpclib
-├── PhySys.cmake        ← (незалежна — PhysicsFS)
-└── PhySysCpp.cmake     ← PhySys  (physfs-hpp)
+├── PhysFS.cmake        ← (незалежна — PhysFS)
+└── PhysFSCpp.cmake     ← PhysFS  (physfs-hpp)
 cmake/SuperBuild.cmake  ← superbuild режим
 ```
 
@@ -56,8 +56,8 @@ cmake/SuperBuild.cmake  ← superbuild режим
 | libir | `libir::libir` | `SHARED IMPORTED` |
 | rpclib | `rpclib::rpc` | `SHARED IMPORTED` |
 | AirSim | `AirSim::AirLib` | `SHARED IMPORTED` |
-| PhysicsFS | `PhysicsFS::PhysicsFS` | `SHARED IMPORTED` |
-| physfs-hpp | `physfs-hpp::physfs-hpp` | `INTERFACE IMPORTED` |
+| PhysFS | `PhysFS::PhysFS` | `SHARED IMPORTED` |
+| PhysFSCpp | `PhysFSCpp::PhysFSCpp` | `INTERFACE IMPORTED` | (upstream: `physfs-hpp`) |
 | rpicam-apps | `rpicam_apps::camera_app` | `SHARED IMPORTED` |
 
 Target повинен бути оголошений через `ep_imported_library()` або `ep_imported_library_from_ep()` з `Common.cmake`. Виклики ідемпотентні — повторний include() безпечний.
@@ -655,12 +655,12 @@ Boost      ──┤
 Eigen3     ──┐
              ├──▶ AirSim
 Rpclib     ──┘
-PhySys     ──────▶ PhySysCpp
+PhysFS     ──────▶ PhysFSCpp
 ```
 
 Незалежні бібліотеки (без залежностей між собою):
 `LibPng`, `LibJpeg`, `OpenSSL`, `Boost`, `Eigen3`, `GeographicLib`,
-`Nlohmann`, `BoostDI`, `BoostSML`, `EasyProfiler`, `Ncnn`, `LibFmt`, `LibIr`, `Rpclib`, `PhySys`
+`Nlohmann`, `BoostDI`, `BoostSML`, `EasyProfiler`, `Ncnn`, `LibFmt`, `LibIr`, `Rpclib`, `PhysFS`
 
 Порядок `include()` у `ExternalDeps.cmake`:
 1. `Common.cmake`
@@ -671,7 +671,7 @@ PhySys     ──────▶ PhySysCpp
 6. `LibCamera.cmake` (залежить від LibEvent через `cam` утиліту)
 7. `LibPisp.cmake`, `RpiCamApps.cmake` (залежать від LibCamera + Boost)
 8. `AirSim.cmake` (залежить від Eigen3 + Rpclib)
-9. `PhySys.cmake`, `PhySysCpp.cmake`
+9. `PhysFS.cmake`, `PhysFSCpp.cmake`
 
 > **Важливо:** правильний порядок збірки забезпечується двома механізмами:
 > 1. Порядок `include()` у `ExternalDeps.cmake` — гарантує що cmake-targets оголошені до використання.

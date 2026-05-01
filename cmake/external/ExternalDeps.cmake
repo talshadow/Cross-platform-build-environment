@@ -17,7 +17,7 @@
 # LibPisp     <- LibCamera, Boost
 # RpiCamApps  <- LibCamera, Boost, OpenCV
 # AirSim      <- Eigen3, Rpclib
-# PhySysCpp   <- PhySys
+# PhysFSCpp   <- PhysFS
 #
 # Кожна бібліотека управляється окремим cmake-файлом у цій директорії.
 # Для додавання нової бібліотеки:
@@ -128,10 +128,10 @@ if(TARGET airsim_ep)
 endif()
 
 # ── Незалежні: прикладні бібліотеки ─────────────────────────────────────────
-include("${_ep_dir}/PhySys.cmake")
+include("${_ep_dir}/PhysFS.cmake")
 
-# ── Залежить від PhySys ──────────────────────────────────────────────────────
-include("${_ep_dir}/PhySysCpp.cmake")
+# ── Залежить від PhysFS ──────────────────────────────────────────────────────
+include("${_ep_dir}/PhysFSCpp.cmake")
 if(TARGET physfscpp_ep)
     _ep_collect_deps(_deps physfs_ep)
     if(_deps)

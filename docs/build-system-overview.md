@@ -75,8 +75,8 @@ SupportRaspberryPI/
 │   │   ├── LibIr.cmake         # libir             (libir::libir)
 │   │   ├── Rpclib.cmake        # rpclib            (rpclib::rpc)
 │   │   ├── AirSim.cmake        # AirSim client     (AirSim::AirLib) — shared
-│   │   ├── PhySys.cmake        # PhysicsFS         (PhysicsFS::PhysicsFS)
-│   │   ├── PhySysCpp.cmake     # physfs-hpp        (physfs-hpp::physfs-hpp) h-only
+│   │   ├── PhysFS.cmake        # PhysFS            (PhysFS::PhysFS)
+│   │   ├── PhysFSCpp.cmake     # PhysFSCpp         (PhysFSCpp::PhysFSCpp) h-only
 │   │   └── RpiCamApps.cmake    # rpicam-apps       (rpicam_apps::camera_app)
 │   │
 │   ├── SuperBuild.cmake        # Superbuild режим (всі deps + main як EP)
@@ -388,7 +388,7 @@ Boost   ────────────────────────
 Eigen3  ──┐
           ├──▶ AirSim
 Rpclib  ──┘
-PhySys  ──────▶ PhySysCpp
+PhysFS  ──────▶ PhysFSCpp
 ```
 
 ---

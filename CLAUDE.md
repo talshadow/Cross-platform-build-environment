@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Принципи розробки
+
+GRASP, SOLID, KISS, DRY, YAGNI, POLA, PoLA, Fail Fast, Composition over Inheritance, Encapsulate What Varies.
+
 ## Призначення проєкту
 
 Інфраструктурний CMake проєкт: toolchain файли, CMake модулі та скрипти для
@@ -223,7 +227,7 @@ OpenCV надає 41 таргет у просторі `OpenCV::`:
 `USE_SYSTEM_LIBCAMERA`, `USE_SYSTEM_LIBPISP`, `USE_SYSTEM_RPCLIB`,
 `USE_SYSTEM_NLOHMANN`, `USE_SYSTEM_BOOSTDI`, `USE_SYSTEM_BOOSTSML`,
 `USE_SYSTEM_EASYPROFILER`, `USE_SYSTEM_NCNN`, `USE_SYSTEM_LIBFMT`, `USE_SYSTEM_LIBIR`,
-`USE_SYSTEM_AIRSIM`, `USE_SYSTEM_PHYSYS`, `USE_SYSTEM_PHYSYSCPP`,
+`USE_SYSTEM_AIRSIM`, `USE_SYSTEM_PHYSFS`, `USE_SYSTEM_PHYSFSCPP`,
 `USE_SYSTEM_RPICAMAPPS`.
 
 SuperBuild: `-DSUPERBUILD=ON` — збирає deps і основний проєкт як окремі ExternalProject.
