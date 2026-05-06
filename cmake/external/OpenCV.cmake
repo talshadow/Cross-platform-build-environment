@@ -471,6 +471,31 @@ else()
             list(APPEND _ocv_byproducts "${_ocv_lib_dir}/lib${_mod}.so")
         endforeach()
 
+        # Патч-скрипт — генерується зараз, запускається під час cmake --build.
+        # Два патчи:
+        #   1. cmake_minimum_required(VERSION 2.x) → 3.28 у OpenCVGenPkgconfig.cmake
+        #   2. #undef complex після #include <complex.h> у hal_internal.cpp
+        #      Sysroot complex.h визначає #define complex _Complex без __cplusplus guard →
+        #      std::complex<T> у hal_internal.cpp розкривається у std::_Complex<T> → помилка.
+        set(_ocv_cfg_cmake  "${EP_SOURCES_DIR}/opencv/cmake/OpenCVGenPkgconfig.cmake")
+        set(_ocv_hal_cpp    "${EP_SOURCES_DIR}/opencv/modules/core/src/hal_internal.cpp")
+        set(_ocv_patch_script "${CMAKE_BINARY_DIR}/_ep_cfg/opencv-patch.cmake")
+        file(WRITE "${_ocv_patch_script}"
+            "file(READ \"${_ocv_cfg_cmake}\" _c)\n"
+            "string(REGEX REPLACE\n"
+            "    \"cmake_minimum_required\\\\(VERSION 2\\\\.[0-9][0-9.]*\"\n"
+            "    \"cmake_minimum_required(VERSION 3.28\" _c \"\${_c}\")\n"
+            "file(WRITE \"${_ocv_cfg_cmake}\" \"\${_c}\")\n"
+            "file(READ \"${_ocv_hal_cpp}\" _c)\n"
+            "string(REPLACE\n"
+            "    \"#include <complex.h>\\n#include \\\"opencv_lapack.h\\\"\"\n"
+            "    \"#include <complex.h>\\n#undef complex\\n#include \\\"opencv_lapack.h\\\"\"\n"
+            "    _c \"\${_c}\")\n"
+            "file(WRITE \"${_ocv_hal_cpp}\" \"\${_c}\")\n"
+        )
+        unset(_ocv_cfg_cmake)
+        unset(_ocv_hal_cpp)
+
         if(OPENCV_USE_GIT)
             message(STATUS "[OpenCV] Джерело: git clone (${OPENCV_GIT_REPO})")
             set(_ocv_download_args
@@ -495,11 +520,7 @@ else()
         ExternalProject_Add(opencv_ep
             ${_ocv_download_args}
             SOURCE_DIR       "${EP_SOURCES_DIR}/opencv"
-            # Патч: OpenCVGenPkgconfig.cmake використовує cmake_minimum_required < 3.5,
-            # що несумісно з CMake >= 3.28. Виправляємо в джерелах.
-            PATCH_COMMAND
-                sed -i "s/cmake_minimum_required(VERSION 2\\.[0-9][0-9.]*/cmake_minimum_required(VERSION 3.28/"
-                    "${EP_SOURCES_DIR}/opencv/cmake/OpenCVGenPkgconfig.cmake"
+            PATCH_COMMAND    "${CMAKE_COMMAND}" -P "${_ocv_patch_script}"
             CMAKE_ARGS       "-C${_ocv_init_cache}" ${_ocv_cmake_args}
             BUILD_BYPRODUCTS ${_ocv_byproducts}
             LOG_DOWNLOAD     ON
@@ -545,3 +566,4 @@ unset(_ocv_lib_dir)
 unset(_ocv_inc_dir)
 unset(_ocv_core)
 unset(_ocv_lapack_ep_args)
+unset(_ocv_patch_script)
