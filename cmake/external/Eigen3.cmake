@@ -165,6 +165,8 @@ if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
         if(_blas_lib AND _blas_hdr)
             set_property(TARGET Eigen3::Eigen APPEND PROPERTY
                 INTERFACE_COMPILE_DEFINITIONS EIGEN_USE_BLAS)
+            set_property(TARGET Eigen3::Eigen APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${_blas_lib}")
             message(STATUS "[Eigen3] EIGEN_USE_BLAS: увімкнено (${_blas_lib})")
         elseif(NOT _blas_lib)
             message(STATUS "[Eigen3] EIGEN_USE_BLAS: libblas.so/libopenblas.so не знайдено — вимкнено")
@@ -190,6 +192,8 @@ if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
                 LAPACK_COMPLEX_CUSTOM
                 "lapack_complex_float=std::complex<float>"
                 "lapack_complex_double=std::complex<double>")
+            set_property(TARGET Eigen3::Eigen APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${_lapacke_lib}")
             message(STATUS "[Eigen3] EIGEN_USE_LAPACKE: увімкнено (${_lapacke_lib})")
         elseif(NOT _lapacke_lib)
             message(STATUS "[Eigen3] EIGEN_USE_LAPACKE: liblapacke.so не знайдено — вимкнено")

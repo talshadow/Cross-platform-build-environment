@@ -586,6 +586,41 @@ else()
     endif()
 endif()
 
+# При крос-збірці libopencv_core.so має DT_NEEDED libopenblas.so.0.
+# Ld при лінкуванні основного проєкту потребує бачити libopenblas.so аби
+# вирішити транзитивні символи і уникнути "DSO missing from command line".
+if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT AND CMAKE_LIBRARY_ARCHITECTURE AND OPENCV_WITH_LAPACK)
+    set(_ocv_isr  "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+    set(_ocv_isr2 "${CMAKE_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+    set(_ocv_iface_openblas "")
+    foreach(_d
+            "${_ocv_isr}/openblas-pthread"
+            "${_ocv_isr2}/openblas-pthread"
+            "${_ocv_isr}"
+            "${_ocv_isr2}")
+        if(EXISTS "${_d}/libopenblas.so")
+            set(_ocv_iface_openblas "${_d}/libopenblas.so")
+            break()
+        endif()
+    endforeach()
+    unset(_ocv_isr)
+    unset(_ocv_isr2)
+    unset(_d)
+    if(_ocv_iface_openblas)
+        # Після find_package(OpenCV) targets named "opencv_core" (IMPORTED via OpenCVConfig.cmake);
+        # OpenCV::opencv_core — ALIAS → змінюємо підлеглий target.
+        if(TARGET opencv_core)
+            set_property(TARGET opencv_core APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${_ocv_iface_openblas}")
+        # Placeholder / EP targets named "OpenCV::opencv_core" (IMPORTED, не ALIAS)
+        elseif(TARGET OpenCV::opencv_core)
+            set_property(TARGET OpenCV::opencv_core APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${_ocv_iface_openblas}")
+        endif()
+    endif()
+    unset(_ocv_iface_openblas)
+endif()
+
 unset(_ocv_prefix)
 unset(_ocv_lib_dir)
 unset(_ocv_inc_dir)
