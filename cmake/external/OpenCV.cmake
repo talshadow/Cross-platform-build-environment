@@ -348,16 +348,31 @@ else()
                 endif()
             endforeach()
 
+            # LAPACK_LIBRARIES: надаємо перевагу libopenblas.so — він містить
+            # LAPACK + CBLAS в одному .so. opencv_core лінкується лише проти
+            # LAPACK_LIBRARIES, тому окремий libblas.so не потрапить у лінк
+            # і cblas_sgemm/cblas_dgemm залишаться undefined. libopenblas.so
+            # вирішує це без передачі списку через cmake args (немає проблем з ';').
             set(_ocv_lapack_lib "")
             foreach(_ocv_d
                     "${_ocv_sr}/openblas-pthread"  "${_ocv_sr2}/openblas-pthread"
-                    "${_ocv_sr}/lapack"             "${_ocv_sr2}/lapack"
                     "${_ocv_sr}"                    "${_ocv_sr2}")
-                if(EXISTS "${_ocv_d}/liblapack.so")
-                    set(_ocv_lapack_lib "${_ocv_d}/liblapack.so")
+                if(EXISTS "${_ocv_d}/libopenblas.so")
+                    set(_ocv_lapack_lib "${_ocv_d}/libopenblas.so")
                     break()
                 endif()
             endforeach()
+            if(NOT _ocv_lapack_lib)
+                foreach(_ocv_d
+                        "${_ocv_sr}/openblas-pthread"  "${_ocv_sr2}/openblas-pthread"
+                        "${_ocv_sr}/lapack"             "${_ocv_sr2}/lapack"
+                        "${_ocv_sr}"                    "${_ocv_sr2}")
+                    if(EXISTS "${_ocv_d}/liblapack.so")
+                        set(_ocv_lapack_lib "${_ocv_d}/liblapack.so")
+                        break()
+                    endif()
+                endforeach()
+            endif()
 
             # cblas.h: шукаємо у нестандартних multiarch include підкаталогах
             set(_ocv_cblas_inc "")
