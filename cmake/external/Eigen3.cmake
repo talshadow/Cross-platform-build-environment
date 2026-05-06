@@ -192,16 +192,19 @@ if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
                 LAPACK_COMPLEX_CUSTOM
                 "lapack_complex_float=std::complex<float>"
                 "lapack_complex_double=std::complex<double>")
-            # liblapacke.so (reference LAPACK) має DT_NEEDED liblapack.so.3, яка лежить
-            # у нестандартному підкаталозі lapack/ і ld не знаходить при крос-збірці.
-            # libopenblas.so містить LAPACKE вбудовано без такої транзитивної залежності.
-            _eigen_find_first(_lapacke_link_lib _eigen_lib_dirs "libopenblas.so")
-            if(NOT _lapacke_link_lib)
-                set(_lapacke_link_lib "${_lapacke_lib}")
-            endif()
             set_property(TARGET Eigen3::Eigen APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES "${_lapacke_link_lib}")
-            unset(_lapacke_link_lib)
+                INTERFACE_LINK_LIBRARIES "${_lapacke_lib}")
+            # liblapacke.so (reference LAPACK) has DT_NEEDED liblapack.so.3 which lives
+            # in non-standard Debian lapack/ subdir. -rpath-link (compile-time only,
+            # not embedded in binary) adds the dir to ld's search for NEEDED chain check,
+            # suppressing "liblapack.so.3 not found" warning (as suggested by ld itself).
+            get_filename_component(_lapacke_dir "${_lapacke_lib}" DIRECTORY)
+            if(EXISTS "${_lapacke_dir}/lapack")
+                set_property(TARGET Eigen3::Eigen APPEND PROPERTY
+                    INTERFACE_LINK_OPTIONS
+                    "LINKER:-rpath-link,${_lapacke_dir}/lapack")
+            endif()
+            unset(_lapacke_dir)
             message(STATUS "[Eigen3] EIGEN_USE_LAPACKE: увімкнено (${_lapacke_lib})")
         elseif(NOT _lapacke_lib)
             message(STATUS "[Eigen3] EIGEN_USE_LAPACKE: liblapacke.so не знайдено — вимкнено")
