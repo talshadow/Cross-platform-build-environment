@@ -557,8 +557,8 @@ function(ep_cmake_args out_var)
             " -Wl,-rpath-link,${CMAKE_SYSROOT}/usr/lib/${RPI_SYSROOT_MULTIARCH}")
     endif()
     list(APPEND _args
-        "-DCMAKE_SHARED_LINKER_FLAGS=${_ep_linker_prefix} ${CMAKE_SHARED_LINKER_FLAGS}"
-        "-DCMAKE_EXE_LINKER_FLAGS=${_ep_linker_prefix} ${CMAKE_EXE_LINKER_FLAGS}"
+        "-DCMAKE_SHARED_LINKER_FLAGS=${_ep_linker_prefix} ${CMAKE_SHARED_LINKER_FLAGS} ${EP_EXTRA_LINKER_FLAGS}"
+        "-DCMAKE_EXE_LINKER_FLAGS=${_ep_linker_prefix} ${CMAKE_EXE_LINKER_FLAGS} ${EP_EXTRA_LINKER_FLAGS}"
     )
 
     # RPATH

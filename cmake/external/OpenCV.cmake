@@ -405,6 +405,15 @@ else()
                     # OpenCV's обгортка extern "C" {} зайва і ламає компіляцію
                     # коли lapack.h включає <complex> всередині extern "C" блоку.
                     -DOPENCV_SKIP_LAPACK_EXTERN_C=ON)
+
+                # З LTO всі модулі OpenCV у фазі лінкування бачать виклики
+                # dtrsm_/dgesdd_ тощо і потребують libopenblas.so на командному рядку.
+                # EP_EXTRA_LINKER_FLAGS підхоплює ep_cmake_args і дописує до
+                # CMAKE_SHARED_LINKER_FLAGS / CMAKE_EXE_LINKER_FLAGS.
+                get_filename_component(_ocv_openblas_dir "${_ocv_lapack_lib}" DIRECTORY)
+                set(EP_EXTRA_LINKER_FLAGS "-L${_ocv_openblas_dir} -lopenblas")
+                unset(_ocv_openblas_dir)
+
                 message(STATUS "[OpenCV] BLAS:   ${_ocv_blas_lib}")
                 message(STATUS "[OpenCV] LAPACK: ${_ocv_lapack_lib}")
                 if(_ocv_cblas_inc)
@@ -452,6 +461,7 @@ else()
             # Явні шляхи BLAS/LAPACK для cross-builds (overrides FindBLAS/FindLAPACK)
             ${_ocv_lapack_ep_args}
         )
+        unset(EP_EXTRA_LINKER_FLAGS)
 
         # Init-cache для pkg-config при крос-компіляції.
         # cmake's FindPkgConfig встановлює PKG_CONFIG_LIBDIR лише для usr/lib/pkgconfig,
