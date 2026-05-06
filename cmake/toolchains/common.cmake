@@ -273,6 +273,21 @@ macro(cross_toolchain_setup_linux_multiarch TOOLCHAIN_PREFIX SYSROOT TOOLCHAIN_N
         unset(_ctslm_gcc_dir)
     endif()
     unset(_ctslm_gcc_dirs)
+
+    # Debian/Ubuntu multiarch: BLAS/LAPACK бібліотеки у нестандартних підкаталогах.
+    # cmake find_library() в ONLY-режимі автоматично застосовує sysroot-prefix
+    # до кожного запису CMAKE_LIBRARY_PATH — шукає ${sysroot}${path}.
+    foreach(_ctslm_blas_dir
+            "/usr/lib/${_ctslm_multiarch}/openblas-pthread"
+            "/usr/lib/${_ctslm_multiarch}/blas"
+            "/usr/lib/${_ctslm_multiarch}/lapack"
+            "/lib/${_ctslm_multiarch}/openblas-pthread"
+            "/lib/${_ctslm_multiarch}/blas"
+            "/lib/${_ctslm_multiarch}/lapack")
+        list(APPEND CMAKE_LIBRARY_PATH "${_ctslm_blas_dir}")
+    endforeach()
+    unset(_ctslm_blas_dir)
+
     unset(_ctslm_multiarch)
 endmacro()
 

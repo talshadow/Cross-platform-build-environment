@@ -108,25 +108,39 @@ if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
     set(_eigen_lib_dirs "${_eigen_prefix}/lib")
     set(_eigen_inc_dirs "${_eigen_prefix}/include")
     if(CMAKE_SYSROOT)
-        set(_sr_lib "${CMAKE_SYSROOT}/usr/lib")
+        set(_sr_lib  "${CMAKE_SYSROOT}/usr/lib")
+        set(_sr_lib2 "${CMAKE_SYSROOT}/lib")
         if(CMAKE_LIBRARY_ARCHITECTURE)
             list(APPEND _eigen_lib_dirs
+                "${_sr_lib}/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
                 "${_sr_lib}/${CMAKE_LIBRARY_ARCHITECTURE}/blas"
                 "${_sr_lib}/${CMAKE_LIBRARY_ARCHITECTURE}/lapack"
-                "${_sr_lib}/${CMAKE_LIBRARY_ARCHITECTURE}")
+                "${_sr_lib}/${CMAKE_LIBRARY_ARCHITECTURE}"
+                "${_sr_lib2}/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
+                "${_sr_lib2}/${CMAKE_LIBRARY_ARCHITECTURE}/blas"
+                "${_sr_lib2}/${CMAKE_LIBRARY_ARCHITECTURE}/lapack"
+                "${_sr_lib2}/${CMAKE_LIBRARY_ARCHITECTURE}")
         endif()
-        list(APPEND _eigen_lib_dirs "${_sr_lib}")
-        list(APPEND _eigen_inc_dirs "${CMAKE_SYSROOT}/usr/include")
+        list(APPEND _eigen_lib_dirs "${_sr_lib}" "${_sr_lib2}")
+        list(APPEND _eigen_inc_dirs
+            "${CMAKE_SYSROOT}/usr/include/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
+            "${CMAKE_SYSROOT}/usr/include/${CMAKE_LIBRARY_ARCHITECTURE}"
+            "${CMAKE_SYSROOT}/usr/include")
         unset(_sr_lib)
+        unset(_sr_lib2)
     else()
         if(CMAKE_LIBRARY_ARCHITECTURE)
             list(APPEND _eigen_lib_dirs
+                "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/blas"
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/lapack"
                 "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
         endif()
         list(APPEND _eigen_lib_dirs "/usr/lib")
-        list(APPEND _eigen_inc_dirs "/usr/include")
+        list(APPEND _eigen_inc_dirs
+            "/usr/include/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
+            "/usr/include/${CMAKE_LIBRARY_ARCHITECTURE}"
+            "/usr/include")
     endif()
 
     # Хелпер: шукає перший збіг з іменами файлів у заданих директоріях
@@ -167,6 +181,15 @@ if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
         if(_lapacke_lib AND _lapacke_hdr)
             set_property(TARGET Eigen3::Eigen APPEND PROPERTY
                 INTERFACE_COMPILE_DEFINITIONS EIGEN_USE_LAPACKE)
+            # lapacke.h включає <complex.h> (C-заголовок), який визначає макрос
+            # `complex` → `_Complex`. Це ламає std::complex<T> у C++ коді.
+            # LAPACK_COMPLEX_CUSTOM запобігає включенню complex.h;
+            # lapack_complex_float/double — аліаси на std::complex для LAPACKE API.
+            set_property(TARGET Eigen3::Eigen APPEND PROPERTY
+                INTERFACE_COMPILE_DEFINITIONS
+                LAPACK_COMPLEX_CUSTOM
+                "lapack_complex_float=std::complex<float>"
+                "lapack_complex_double=std::complex<double>")
             message(STATUS "[Eigen3] EIGEN_USE_LAPACKE: увімкнено (${_lapacke_lib})")
         elseif(NOT _lapacke_lib)
             message(STATUS "[Eigen3] EIGEN_USE_LAPACKE: liblapacke.so не знайдено — вимкнено")

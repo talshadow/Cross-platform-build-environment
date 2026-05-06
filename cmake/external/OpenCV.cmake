@@ -319,6 +319,98 @@ else()
             list(APPEND _ocv_tbb_args -DWITH_TBB=ON)
         endif()
 
+        # BLAS/LAPACK: при крос-компіляції CMake's FindBLAS/FindLAPACK не знаходять
+        # бібліотеки у нестандартних Debian multiarch підкаталогах (openblas-pthread/ тощо).
+        #
+        # OpenCV cmake (OpenCVFindLAPACK.cmake) активує LAPACK тільки якщо задані:
+        #   BLAS_LIBRARIES / LAPACK_LIBRARIES — шляхи до .so
+        #   LAPACK_CBLAS_H / LAPACK_LAPACKE_H — імена заголовків (не шляхи!)
+        #   LAPACK_INCLUDE_DIR — директорії де знаходяться ці заголовки
+        #     (повний sysroot-prefixed шлях: cmake strip-and-re-roots через ONLY mode,
+        #      та передає напряму до try_compile INCLUDE_DIRECTORIES)
+        set(_ocv_lapack_ep_args "")
+        if(OPENCV_WITH_LAPACK AND CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT AND CMAKE_LIBRARY_ARCHITECTURE)
+            set(_ocv_sr  "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+            set(_ocv_sr2 "${CMAKE_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
+
+            set(_ocv_blas_lib "")
+            foreach(_ocv_d
+                    "${_ocv_sr}/openblas-pthread"  "${_ocv_sr2}/openblas-pthread"
+                    "${_ocv_sr}"                    "${_ocv_sr2}")
+                foreach(_ocv_n "libblas.so" "libopenblas.so")
+                    if(EXISTS "${_ocv_d}/${_ocv_n}")
+                        set(_ocv_blas_lib "${_ocv_d}/${_ocv_n}")
+                        break()
+                    endif()
+                endforeach()
+                if(_ocv_blas_lib)
+                    break()
+                endif()
+            endforeach()
+
+            set(_ocv_lapack_lib "")
+            foreach(_ocv_d
+                    "${_ocv_sr}/openblas-pthread"  "${_ocv_sr2}/openblas-pthread"
+                    "${_ocv_sr}/lapack"             "${_ocv_sr2}/lapack"
+                    "${_ocv_sr}"                    "${_ocv_sr2}")
+                if(EXISTS "${_ocv_d}/liblapack.so")
+                    set(_ocv_lapack_lib "${_ocv_d}/liblapack.so")
+                    break()
+                endif()
+            endforeach()
+
+            # cblas.h: шукаємо у нестандартних multiarch include підкаталогах
+            set(_ocv_cblas_inc "")
+            set(_ocv_inc_base "${CMAKE_SYSROOT}/usr/include")
+            foreach(_ocv_d
+                    "${_ocv_inc_base}/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
+                    "${_ocv_inc_base}/${CMAKE_LIBRARY_ARCHITECTURE}"
+                    "${_ocv_inc_base}")
+                if(EXISTS "${_ocv_d}/cblas.h")
+                    set(_ocv_cblas_inc "${_ocv_d}")
+                    break()
+                endif()
+            endforeach()
+
+            if(_ocv_blas_lib AND _ocv_lapack_lib)
+                # LAPACK_INCLUDE_DIR будуємо як cmake list (';'-розділювач).
+                # Передається через init-cache (не через -D), щоб уникнути
+                # проблем з екрануванням ';' при серіалізації ExternalProject cmake args.
+                set(_ocv_lapack_inc_dirs "${_ocv_inc_base}")
+                if(_ocv_cblas_inc AND NOT _ocv_cblas_inc STREQUAL _ocv_inc_base)
+                    list(PREPEND _ocv_lapack_inc_dirs "${_ocv_cblas_inc}")
+                endif()
+
+                list(APPEND _ocv_lapack_ep_args
+                    "-DBLAS_LIBRARIES=${_ocv_blas_lib}"
+                    "-DLAPACK_LIBRARIES=${_ocv_lapack_lib}"
+                    "-DLAPACK_CBLAS_H=cblas.h"
+                    "-DLAPACK_LAPACKE_H=lapacke.h"
+                    # cblas.h/lapacke.h мають власні extern "C" guards для C++;
+                    # OpenCV's обгортка extern "C" {} зайва і ламає компіляцію
+                    # коли lapack.h включає <complex> всередині extern "C" блоку.
+                    -DOPENCV_SKIP_LAPACK_EXTERN_C=ON)
+                message(STATUS "[OpenCV] BLAS:   ${_ocv_blas_lib}")
+                message(STATUS "[OpenCV] LAPACK: ${_ocv_lapack_lib}")
+                if(_ocv_cblas_inc)
+                    message(STATUS "[OpenCV] cblas.h: ${_ocv_cblas_inc}")
+                else()
+                    message(STATUS "[OpenCV] cblas.h: не знайдено у sysroot")
+                endif()
+            else()
+                message(STATUS "[OpenCV] BLAS/LAPACK не знайдено у sysroot — вимикаємо WITH_LAPACK")
+                list(APPEND _ocv_lapack_ep_args -DWITH_LAPACK=OFF)
+            endif()
+            unset(_ocv_sr)
+            unset(_ocv_sr2)
+            unset(_ocv_blas_lib)
+            unset(_ocv_lapack_lib)
+            unset(_ocv_cblas_inc)
+            unset(_ocv_inc_base)
+            unset(_ocv_d)
+            unset(_ocv_n)
+        endif()
+
         ep_cmake_args(_ocv_cmake_args
             # Мінімізуємо залежності для embedded/cross-compilation
             # BUILD_SHARED_LIBS=ON вже передається через ep_cmake_args()
@@ -327,10 +419,11 @@ else()
             -DBUILD_EXAMPLES=OFF
             -DBUILD_DOCS=OFF
             -DWITH_GTK=OFF
-            -DWITH_QT=OFF
+            -DWITH_QT=${PLATFORM_X86_64}
             -DWITH_CUDA=OFF
             -DWITH_IPP=OFF
             -DOPENCV_GENERATE_PKGCONFIG=ON
+            -DWITH_OPENGL=${PLATFORM_X86_64}
             # Керовані опції (OFF за замовченням; вмикаються через OPENCV_WITH_* / OPENCV_ENABLE_*)
             -DWITH_FFMPEG=${OPENCV_WITH_FFMPEG}
             -DWITH_OPENCL=${OPENCV_WITH_OPENCL}
@@ -341,6 +434,8 @@ else()
             ${_ocv_tbb_args}
             ${_ocv_contrib_arg}
             ${_ocv_dep_args}
+            # Явні шляхи BLAS/LAPACK для cross-builds (overrides FindBLAS/FindLAPACK)
+            ${_ocv_lapack_ep_args}
         )
 
         # Init-cache для pkg-config при крос-компіляції.
@@ -357,11 +452,18 @@ else()
                 "\"${_ocv_sysroot}/usr/lib/${_ocv_arch}/pkgconfig:"
                 "${_ocv_sysroot}/usr/lib/pkgconfig:"
                 "${_ocv_sysroot}/usr/share/pkgconfig\")\n")
+            if(_ocv_lapack_inc_dirs)
+                # "Quoted ${var}" у file(APPEND) зберігає ';' буквально →
+                # cmake list у init-cache читається коректно через -C
+                file(APPEND "${_ocv_init_cache}"
+                    "set(LAPACK_INCLUDE_DIR \"${_ocv_lapack_inc_dirs}\" CACHE PATH \"\" FORCE)\n")
+            endif()
             unset(_ocv_sysroot)
             unset(_ocv_arch)
         else()
             file(WRITE "${_ocv_init_cache}" "# native build — no extra pkg-config setup\n")
         endif()
+        unset(_ocv_lapack_inc_dirs)
 
         # BYPRODUCTS — основні модулі для Ninja
         set(_ocv_byproducts "")
@@ -442,3 +544,4 @@ unset(_ocv_prefix)
 unset(_ocv_lib_dir)
 unset(_ocv_inc_dir)
 unset(_ocv_core)
+unset(_ocv_lapack_ep_args)
