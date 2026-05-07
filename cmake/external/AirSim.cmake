@@ -104,16 +104,10 @@ else()
         COMMAND ${CMAKE_COMMAND} -E create_symlink
         "${EP_SOURCES_DIR}/rpclib"
         "${EP_SOURCES_DIR}/airsim/external/rpclib/rpclib-2.3.0"
-        COMMAND sed -i
-        "s|include_directories(.*deps/eigen3.*)|include_directories(${_airsim_eigen_inc})|g"
-        "${EP_SOURCES_DIR}/airsim/cmake/cmake-modules/CommonSetup.cmake"
-        # AirLib хардкодить STATIC — замінюємо на SHARED.
-        # MavLinkCom/rpclib лишаються STATIC; компілюються з -fPIC
-        # (CommonSetup встановлює CMAKE_POSITION_INDEPENDENT_CODE ON),
-        # тому линкуються у libAirLib.so без проблем.
-        COMMAND sed -i
-        "s|add_library(\${PROJECT_NAME} STATIC|add_library(\${PROJECT_NAME} SHARED|g"
-            "${EP_SOURCES_DIR}/airsim/cmake/AirLib/CMakeLists.txt"
+        COMMAND ${CMAKE_COMMAND}
+            "-DAIRSIM_SOURCE_DIR=${EP_SOURCES_DIR}/airsim"
+            "-DEIGEN_INC=${_airsim_eigen_inc}"
+            -P "${CMAKE_CURRENT_LIST_DIR}/patches/airsim-configure.cmake"
             SOURCE_SUBDIR   "cmake"
             CMAKE_ARGS      ${_airsim_cmake_args}
             # AirSim не має install() — копіюємо вручну

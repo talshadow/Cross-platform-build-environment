@@ -336,6 +336,7 @@ else()
             set(_ocv_blas_lib "")
             foreach(_ocv_d
                     "${_ocv_sr}/openblas-pthread"  "${_ocv_sr2}/openblas-pthread"
+                    "${_ocv_sr}/blas"               "${_ocv_sr2}/blas"
                     "${_ocv_sr}"                    "${_ocv_sr2}")
                 foreach(_ocv_n "libblas.so" "libopenblas.so")
                     if(EXISTS "${_ocv_d}/${_ocv_n}")
@@ -374,15 +375,23 @@ else()
                 endforeach()
             endif()
 
-            # cblas.h: шукаємо у нестандартних multiarch include підкаталогах
+            # cblas.h / cblas-netlib.h (Debian Bookworm+ libblas-dev): шукаємо у
+            # нестандартних multiarch include підкаталогах
             set(_ocv_cblas_inc "")
+            set(_ocv_cblas_hdr "cblas.h")
             set(_ocv_inc_base "${CMAKE_SYSROOT}/usr/include")
             foreach(_ocv_d
                     "${_ocv_inc_base}/${CMAKE_LIBRARY_ARCHITECTURE}/openblas-pthread"
                     "${_ocv_inc_base}/${CMAKE_LIBRARY_ARCHITECTURE}"
                     "${_ocv_inc_base}")
-                if(EXISTS "${_ocv_d}/cblas.h")
-                    set(_ocv_cblas_inc "${_ocv_d}")
+                foreach(_ocv_h "cblas.h" "cblas-netlib.h")
+                    if(EXISTS "${_ocv_d}/${_ocv_h}")
+                        set(_ocv_cblas_inc "${_ocv_d}")
+                        set(_ocv_cblas_hdr "${_ocv_h}")
+                        break()
+                    endif()
+                endforeach()
+                if(_ocv_cblas_inc)
                     break()
                 endif()
             endforeach()
@@ -398,26 +407,38 @@ else()
 
                 list(APPEND _ocv_lapack_ep_args
                     "-DBLAS_LIBRARIES=${_ocv_blas_lib}"
-                    "-DLAPACK_LIBRARIES=${_ocv_lapack_lib}"
-                    "-DLAPACK_CBLAS_H=cblas.h"
+                    # LAPACK_LIBRARIES передається через init-cache (нижче), а не через -D,
+                    # щоб підтримувати cmake-list liblapack.so;libblas.so без проблем з ';'.
+                    "-DLAPACK_CBLAS_H=${_ocv_cblas_hdr}"
                     "-DLAPACK_LAPACKE_H=lapacke.h"
                     # cblas.h/lapacke.h мають власні extern "C" guards для C++;
                     # OpenCV's обгортка extern "C" {} зайва і ламає компіляцію
                     # коли lapack.h включає <complex> всередині extern "C" блоку.
                     -DOPENCV_SKIP_LAPACK_EXTERN_C=ON)
 
-                # З LTO всі модулі OpenCV у фазі лінкування бачать виклики
-                # dtrsm_/dgesdd_ тощо і потребують libopenblas.so на командному рядку.
-                # EP_EXTRA_LINKER_FLAGS підхоплює ep_cmake_args і дописує до
-                # CMAKE_SHARED_LINKER_FLAGS / CMAKE_EXE_LINKER_FLAGS.
-                get_filename_component(_ocv_openblas_dir "${_ocv_lapack_lib}" DIRECTORY)
-                set(EP_EXTRA_LINKER_FLAGS "-L${_ocv_openblas_dir} -lopenblas")
-                unset(_ocv_openblas_dir)
+                # LAPACK_LIBRARIES: OpenCV лінкує opencv_core ТІЛЬКИ проти цього списку.
+                # При reference LAPACK cblas_sgemm живе у libblas.so — включаємо обидва;
+                # при OpenBLAS libopenblas.so містить і BLAS, і LAPACK — один .so достатньо.
+                # Зберігаємо в _ocv_lapack_libs_for_cache: init-cache записується нижче
+                # (після unset цього блоку), де cmake-list можна передати з ';' буквально.
+                get_filename_component(_ocv_lapack_dir "${_ocv_lapack_lib}" DIRECTORY)
+                if(_ocv_lapack_lib MATCHES "/libopenblas")
+                    set(_ocv_lapack_libs_for_cache "${_ocv_lapack_lib}")
+                    set(EP_EXTRA_LINKER_FLAGS "-L${_ocv_lapack_dir} -lopenblas")
+                else()
+                    # Reference LAPACK: два .so (liblapack + libblas) в різних subdir
+                    set(_ocv_lapack_libs_for_cache "${_ocv_lapack_lib}" "${_ocv_blas_lib}")
+                    get_filename_component(_ocv_blas_dir "${_ocv_blas_lib}" DIRECTORY)
+                    set(EP_EXTRA_LINKER_FLAGS
+                        "-L${_ocv_lapack_dir} -llapack -L${_ocv_blas_dir} -lblas")
+                    unset(_ocv_blas_dir)
+                endif()
+                unset(_ocv_lapack_dir)
 
                 message(STATUS "[OpenCV] BLAS:   ${_ocv_blas_lib}")
                 message(STATUS "[OpenCV] LAPACK: ${_ocv_lapack_lib}")
                 if(_ocv_cblas_inc)
-                    message(STATUS "[OpenCV] cblas.h: ${_ocv_cblas_inc}")
+                    message(STATUS "[OpenCV] ${_ocv_cblas_hdr}: ${_ocv_cblas_inc}")
                 else()
                     message(STATUS "[OpenCV] cblas.h: не знайдено у sysroot")
                 endif()
@@ -430,6 +451,7 @@ else()
             unset(_ocv_blas_lib)
             unset(_ocv_lapack_lib)
             unset(_ocv_cblas_inc)
+            unset(_ocv_cblas_hdr)
             unset(_ocv_inc_base)
             unset(_ocv_d)
             unset(_ocv_n)
@@ -482,6 +504,15 @@ else()
                 # cmake list у init-cache читається коректно через -C
                 file(APPEND "${_ocv_init_cache}"
                     "set(LAPACK_INCLUDE_DIR \"${_ocv_lapack_inc_dirs}\" CACHE PATH \"\" FORCE)\n")
+            endif()
+            if(_ocv_lapack_libs_for_cache)
+                # LAPACK_LIBRARIES як cmake-list: OpenCV лінкує opencv_core проти
+                # всіх елементів цього списку (target_link_libraries PRIVATE).
+                # При reference LAPACK = liblapack.so;libblas.so — обидва потрібні
+                # щоб cblas_sgemm з libblas.so був знайдений під час збірки.
+                file(APPEND "${_ocv_init_cache}"
+                    "set(LAPACK_LIBRARIES \"${_ocv_lapack_libs_for_cache}\" CACHE STRING \"\" FORCE)\n")
+                unset(_ocv_lapack_libs_for_cache)
             endif()
             unset(_ocv_sysroot)
             unset(_ocv_arch)
@@ -586,39 +617,62 @@ else()
     endif()
 endif()
 
-# При крос-збірці libopencv_core.so має DT_NEEDED libopenblas.so.0.
-# Ld при лінкуванні основного проєкту потребує бачити libopenblas.so аби
-# вирішити транзитивні символи і уникнути "DSO missing from command line".
+# При крос-збірці libopencv_core.so має DT_NEEDED libopenblas.so.0 (OpenBLAS)
+# або liblapack.so.3 + libblas.so.3 (reference LAPACK). Ld при лінкуванні
+# основного проєкту потребує бачити ці .so аби вирішити транзитивні символи
+# і уникнути "DSO missing from command line".
 if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT AND CMAKE_LIBRARY_ARCHITECTURE AND OPENCV_WITH_LAPACK)
     set(_ocv_isr  "${CMAKE_SYSROOT}/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
     set(_ocv_isr2 "${CMAKE_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
-    set(_ocv_iface_openblas "")
+
+    # Спочатку шукаємо OpenBLAS (містить і BLAS, і LAPACK в одному .so)
+    set(_ocv_iface_libs "")
     foreach(_d
-            "${_ocv_isr}/openblas-pthread"
-            "${_ocv_isr2}/openblas-pthread"
-            "${_ocv_isr}"
-            "${_ocv_isr2}")
+            "${_ocv_isr}/openblas-pthread"  "${_ocv_isr2}/openblas-pthread"
+            "${_ocv_isr}"                    "${_ocv_isr2}")
         if(EXISTS "${_d}/libopenblas.so")
-            set(_ocv_iface_openblas "${_d}/libopenblas.so")
+            list(APPEND _ocv_iface_libs "${_d}/libopenblas.so")
             break()
         endif()
     endforeach()
+
+    # Якщо OpenBLAS не знайдено — шукаємо reference liblapack.so + libblas.so
+    if(NOT _ocv_iface_libs)
+        foreach(_d
+                "${_ocv_isr}/lapack"  "${_ocv_isr2}/lapack"
+                "${_ocv_isr}"         "${_ocv_isr2}")
+            if(EXISTS "${_d}/liblapack.so")
+                list(APPEND _ocv_iface_libs "${_d}/liblapack.so")
+                break()
+            endif()
+        endforeach()
+        foreach(_d
+                "${_ocv_isr}/blas"  "${_ocv_isr2}/blas"
+                "${_ocv_isr}"        "${_ocv_isr2}")
+            if(EXISTS "${_d}/libblas.so")
+                list(APPEND _ocv_iface_libs "${_d}/libblas.so")
+                break()
+            endif()
+        endforeach()
+    endif()
+
     unset(_ocv_isr)
     unset(_ocv_isr2)
     unset(_d)
-    if(_ocv_iface_openblas)
+
+    if(_ocv_iface_libs)
         # Після find_package(OpenCV) targets named "opencv_core" (IMPORTED via OpenCVConfig.cmake);
         # OpenCV::opencv_core — ALIAS → змінюємо підлеглий target.
         if(TARGET opencv_core)
             set_property(TARGET opencv_core APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES "${_ocv_iface_openblas}")
+                INTERFACE_LINK_LIBRARIES "${_ocv_iface_libs}")
         # Placeholder / EP targets named "OpenCV::opencv_core" (IMPORTED, не ALIAS)
         elseif(TARGET OpenCV::opencv_core)
             set_property(TARGET OpenCV::opencv_core APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES "${_ocv_iface_openblas}")
+                INTERFACE_LINK_LIBRARIES "${_ocv_iface_libs}")
         endif()
     endif()
-    unset(_ocv_iface_openblas)
+    unset(_ocv_iface_libs)
 endif()
 
 unset(_ocv_prefix)

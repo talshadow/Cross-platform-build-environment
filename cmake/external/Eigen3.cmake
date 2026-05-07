@@ -12,8 +12,10 @@
 #                         OFF (за замовч.): зібрати через ExternalProject
 #   EIGEN_USE_BLAS      — ON (за замовч.): додати EIGEN_USE_BLAS до INTERFACE_COMPILE_DEFINITIONS
 #                         таргету Eigen3::Eigen. Потребує libblas-dev або libopenblas-dev в sysroot.
-#   EIGEN_USE_LAPACKE   — ON (за замовч.): додати EIGEN_USE_LAPACKE до INTERFACE_COMPILE_DEFINITIONS
-#                         таргету Eigen3::Eigen. Потребує liblapacke-dev в sysroot.
+#   EIGEN_USE_LAPACKE   — OFF (за замовч.): додати EIGEN_USE_LAPACKE до INTERFACE_COMPILE_DEFINITIONS
+#                         таргету Eigen3::Eigen. Потребує liblapacke-dev в sysroot і liblapacke3
+#                         на цільовому пристрої. Вимкнено бо liblapacke3 зазвичай не входить
+#                         до базової RPi OS — Eigen має власні реалізації декомпозицій.
 #
 # Кеш-змінні:
 #   EIGEN3_VERSION    — версія (git тег)
@@ -28,8 +30,8 @@ option(EIGEN_USE_BLAS
     ON)
 
 option(EIGEN_USE_LAPACKE
-    "Увімкнути LAPACKE-бекенд для Eigen (EIGEN_USE_LAPACKE; потребує liblapacke-dev в sysroot)"
-    ON)
+    "Увімкнути LAPACKE-бекенд для Eigen (EIGEN_USE_LAPACKE; потребує liblapacke-dev в sysroot та на цільовому пристрої)"
+    OFF)
 
 set(EIGEN3_VERSION "3.4.0"
     CACHE STRING "Версія Eigen3 для встановлення з джерел")
@@ -162,6 +164,25 @@ if(TARGET Eigen3::Eigen AND (EIGEN_USE_BLAS OR EIGEN_USE_LAPACKE))
     if(EIGEN_USE_BLAS)
         _eigen_find_first(_blas_lib _eigen_lib_dirs "libblas.so" "libopenblas.so")
         _eigen_find_first(_blas_hdr _eigen_inc_dirs "cblas.h")
+
+        # Debian Bookworm+ / RPi OS: libblas-dev встановлює cblas-netlib.h замість
+        # cblas.h. Eigen включає <cblas.h> хардкодом — генеруємо враппер у
+        # ${_eigen_prefix}/include/eigen3 (вже в INTERFACE_INCLUDE_DIRECTORIES).
+        # Не чіпаємо INTERFACE_INCLUDE_DIRECTORIES: AirSim читає це property і
+        # передає у sed/cmake-arg — список з двох шляхів зламає обидва.
+        if(NOT _blas_hdr)
+            _eigen_find_first(_cblas_netlib _eigen_inc_dirs "cblas-netlib.h")
+            if(_cblas_netlib)
+                set(_cblas_wrapper "${_eigen_prefix}/include/eigen3/cblas.h")
+                if(NOT EXISTS "${_cblas_wrapper}")
+                    file(WRITE "${_cblas_wrapper}" "#include <cblas-netlib.h>\n")
+                endif()
+                set(_blas_hdr "${_cblas_wrapper}")
+                unset(_cblas_wrapper)
+            endif()
+            unset(_cblas_netlib)
+        endif()
+
         if(_blas_lib AND _blas_hdr)
             set_property(TARGET Eigen3::Eigen APPEND PROPERTY
                 INTERFACE_COMPILE_DEFINITIONS EIGEN_USE_BLAS)
