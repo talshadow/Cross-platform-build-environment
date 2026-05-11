@@ -563,11 +563,17 @@ function(ep_cmake_args out_var)
 
     # RPATH
     if(USE_ORIGIN_RPATH)
+        if(_EP_PLATFORM_X86_64)
+            set(_ep_rpath "$ORIGIN/../lib;${EXTERNAL_INSTALL_PREFIX}/lib")
+        else()
+            set(_ep_rpath "$ORIGIN/../lib")
+        endif()
         list(APPEND _args
-            "-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib"
+            "-DCMAKE_INSTALL_RPATH=${_ep_rpath}"
             -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
             -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF
         )
+        unset(_ep_rpath)
     endif()
 
     # LTO для EP-бібліотек

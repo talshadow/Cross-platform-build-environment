@@ -1,7 +1,8 @@
 # cmake/modules/InstallHelpers.cmake
 #
 # target_add_ep_rpath(<target>)
-#   Вбудовує $ORIGIN/../lib RPATH у <target> — так само як EP-бібліотеки.
+#   Вбудовує RPATH у <target> — так само як EP-бібліотеки.
+#   На x86_64 додає також абсолютний EXTERNAL_INSTALL_PREFIX/lib.
 #
 # project_setup_install(<target>)
 #   Налаштовує кастомну інсталяцію головного виконуваного файлу.
@@ -34,8 +35,12 @@ include(BinaryDeps)
 # ---------------------------------------------------------------------------
 # target_add_ep_rpath(<target>)
 #
-# Додає $ORIGIN/../lib до INSTALL_RPATH таргету — так само як EP-бібліотеки
-# (через ep_cmake_args у Common.cmake).
+# Додає INSTALL_RPATH таргету — так само як EP-бібліотеки (ep_cmake_args).
+#
+#   $ORIGIN/../lib                     — завжди (відносний, портабельний)
+#   ${EXTERNAL_INSTALL_PREFIX}/lib     — тільки x86_64 нативна збірка
+#                                        (щоб бінарник знаходив EP-бібліотеки
+#                                         без деплою поруч з bin/)
 #
 # Використовує APPEND, тому безпечно якщо INSTALL_RPATH вже задано.
 #
@@ -49,6 +54,12 @@ function(target_add_ep_rpath target)
     endif()
     set_property(TARGET "${target}" APPEND PROPERTY
         INSTALL_RPATH "$ORIGIN/../lib")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64"
+            AND NOT CMAKE_CROSSCOMPILING
+            AND DEFINED EXTERNAL_INSTALL_PREFIX)
+        set_property(TARGET "${target}" APPEND PROPERTY
+            INSTALL_RPATH "${EXTERNAL_INSTALL_PREFIX}/lib")
+    endif()
     set_target_properties("${target}" PROPERTIES
         BUILD_WITH_INSTALL_RPATH    ON
         INSTALL_RPATH_USE_LINK_PATH OFF
