@@ -1,0 +1,126 @@
+--- a/include/physfs.hpp
++++ b/include/physfs.hpp
+@@ -77,9 +77,9 @@
+ 
+ Version getLinkedVersion();
+ 
+-void init(char const * argv0);
++bool init(char const * argv0);
+ 
+-void deinit();
++bool deinit();
+ 
+ ArchiveInfoList supportedArchiveTypes();
+ 
+@@ -97,19 +97,19 @@
+ 
+ string getWriteDir();
+ 
+-void setWriteDir(string const & newDir);
++bool setWriteDir(string const & newDir);
+ 
+-void removeFromSearchPath(string const & oldDir);
++bool removeFromSearchPath(string const & oldDir);
+ 
+ StringList getSearchPath();
+ 
+ void getSearchPath(StringCallback callback, void * extra);
+ 
+-void setSaneConfig(string const & orgName, string const & appName, string const & archiveExt, bool includeCdRoms, bool archivesFirst);
++bool setSaneConfig(string const & orgName, string const & appName, string const & archiveExt, bool includeCdRoms, bool archivesFirst);
+ 
+-void mkdir(string const & dirName);
++bool mkdir(string const & dirName);
+ 
+-void deleteFile(string const & filename);
++bool deleteFile(string const & filename);
+ 
+ string getRealDir(string const & filename);
+ 
+@@ -129,9 +129,9 @@
+ 
+ bool symbolicLinksPermitted();
+ 
+-void setAllocator(Allocator const * allocator);
++bool setAllocator(Allocator const * allocator);
+ 
+-void mount(string const & newDir, string const & mountPoint, bool appendToPath);
++bool mount(string const & newDir, string const & mountPoint, bool appendToPath);
+ 
+ string getMountPoint(string const & dir);
+ 
+@@ -335,12 +335,12 @@
+ 	return version;
+ }
+ 
+-void init(const char* argv0) {
+-	PHYSFS_init(argv0);
++bool init(const char* argv0) {
++	return PHYSFS_init(argv0) != 0;
+ }
+ 
+-void deinit() {
+-	PHYSFS_deinit();
++bool deinit() {
++	return PHYSFS_deinit() != 0;
+ }
+ 
+ ArchiveInfoList supportedArchiveTypes() {
+@@ -385,12 +385,12 @@
+ 	return PHYSFS_getWriteDir();
+ }
+ 
+-void setWriteDir(const string& newDir) {
+-	PHYSFS_setWriteDir(newDir.c_str());
++bool setWriteDir(const string& newDir) {
++	return PHYSFS_setWriteDir(newDir.c_str()) != 0;
+ }
+ 
+-void removeFromSearchPath(const string& oldDir) {
+-	PHYSFS_removeFromSearchPath(oldDir.c_str());
++bool removeFromSearchPath(const string& oldDir) {
++	return PHYSFS_removeFromSearchPath(oldDir.c_str()) != 0;
+ }
+ 
+ StringList getSearchPath() {
+@@ -407,17 +407,17 @@
+ 	PHYSFS_getSearchPathCallback(callback, extra);
+ }
+ 
+-void setSaneConfig(const string& orgName, const string& appName,
++bool setSaneConfig(const string& orgName, const string& appName,
+ 		const string& archiveExt, bool includeCdRoms, bool archivesFirst) {
+-	PHYSFS_setSaneConfig(orgName.c_str(), appName.c_str(), archiveExt.c_str(), includeCdRoms, archivesFirst);
++	return PHYSFS_setSaneConfig(orgName.c_str(), appName.c_str(), archiveExt.c_str(), includeCdRoms, archivesFirst) != 0;
+ }
+ 
+-void mkdir(const string& dirName) {
+-	PHYSFS_mkdir(dirName.c_str());
++bool mkdir(const string& dirName) {
++	return PHYSFS_mkdir(dirName.c_str()) != 0;
+ }
+ 
+-void deleteFile(const string& filename) {
+-	PHYSFS_delete(filename.c_str());
++bool deleteFile(const string& filename) {
++	return PHYSFS_delete(filename.c_str()) != 0;
+ }
+ 
+ string getRealDir(const string& filename) {
+@@ -462,12 +462,12 @@
+ 	return PHYSFS_symbolicLinksPermitted();
+ }
+ 
+-void setAllocator(const Allocator* allocator) {
+-	PHYSFS_setAllocator(allocator);
++bool setAllocator(const Allocator* allocator) {
++	return PHYSFS_setAllocator(allocator) != 0;
+ }
+ 
+-void mount(const string& newDir, const string& mountPoint, bool appendToPath) {
+-	PHYSFS_mount(newDir.c_str(), mountPoint.c_str(), appendToPath);
++bool mount(const string& newDir, const string& mountPoint, bool appendToPath) {
++	return PHYSFS_mount(newDir.c_str(), mountPoint.c_str(), appendToPath) != 0;
+ }
+ 
+ string getMountPoint(const string& dir) {

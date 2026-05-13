@@ -70,6 +70,8 @@ else()
             GIT_TAG           "${PHYSFSCPP_VERSION}"
             GIT_SHALLOW       ON
             SOURCE_DIR        "${EP_SOURCES_DIR}/physfscpp"
+            PATCH_COMMAND
+                sh -c "patch -p1 -N -i '${CMAKE_CURRENT_LIST_DIR}/patches/physfscpp-return-values.patch' || true"
             CONFIGURE_COMMAND ""
             BUILD_COMMAND     ""
             INSTALL_COMMAND
